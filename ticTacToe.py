@@ -18,7 +18,12 @@ BOARD_STATE_OPEN: str = "Open"
 BOARD_STATE_TIE: str = "Tie"
 BOARD_STATE_X_WINS: str = "X wins"
 BOARD_STATE_O_WINS: str = "O wins"
+
+# TODO: This could be passed as a parameter to avoid having it be a global variable. Determine whether there is a benefit to doing so, or if it complicates things too much.
 last_move_position: int = NOT_FOUND
+
+def assert_position_is_valid(position: int) -> None:
+    assert POSITION_MIN <= position <= POSITION_MAX, "position should be between 0 and 8"
 
 def does_terminal_support_color() -> bool:
     # Check if STDOUT is a terminal.
@@ -56,7 +61,7 @@ def color(text: str, color: str) -> str:
 
     return "\033[" + color + "m" + text + "\033[0m"
 
-def get_available_positions(board: list[int]) -> list[int]:
+def get_available_positions(board: list[str]) -> list[int]:
     """returns a list of available moves on the current board."""
     available_positions = []
 
@@ -105,9 +110,10 @@ def print_board(board: list[str]) -> None:
     global last_move_position
 
     BOARD_BORDER_CHAR = "|"
+    BOARD_SIZE = 3
 
     for i in range(CELL_COUNT):
-        character = color(str(i), COLOR_GRAY)
+        character = color(str(i + 1), COLOR_GRAY)
 
         if last_move_position == i:
             character = color(board[i], COLOR_YELLOW)
@@ -116,14 +122,16 @@ def print_board(board: list[str]) -> None:
         elif board[i] == CELL_O:
             character = color(board[i], COLOR_GREEN)
 
-        if i == 2 or i == 5 or i == 8:
+        is_last_column = (i + 1) % BOARD_SIZE == 0
+
+        if is_last_column:
             print(BOARD_BORDER_CHAR, character, BOARD_BORDER_CHAR)
         else:
             print(BOARD_BORDER_CHAR, character, end = " ")
 
 def is_position_already_taken(board: list[str], position: int) -> bool:
     """returns true if a move has already been played (X or O) on the board."""
-    assert position >= POSITION_MIN and position <= POSITION_MAX, "position should be between 0 and 8"
+    assert_position_is_valid(position)
 
     return board[position] != CELL_EMPTY
 
@@ -131,7 +139,7 @@ def evaluate_board(board: list[str]) -> str:
     """determines if X or O won the game on the given board."""
     possible_win_patterns = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [6, 4, 2]]
 
-    for i in range(POSITION_MAX):
+    for i in range(len(possible_win_patterns)):
         positions = [possible_win_patterns[i][0], possible_win_patterns[i][1], possible_win_patterns[i][2]]
         is_win = board[positions[0]] == board[positions[1]] == board[positions[2]] != CELL_EMPTY
 
@@ -140,7 +148,7 @@ def evaluate_board(board: list[str]) -> str:
 
     return BOARD_STATE_TIE if board.count(CELL_EMPTY) == 0 else BOARD_STATE_OPEN
 
-def computer_move(board: list[str]) -> None:
+def play_computer_move(board: list[str]) -> None:
     """computerMove(currentBoard) runs an algorithm to fill in the O move."""
 
     best_move_position = NOT_FOUND
@@ -171,7 +179,7 @@ def play_move(board: list[str], position: int, player: str) -> None:
     """playMove(currentBoard, move, player) plays the input move on the board for the input player."""
     global last_move_position
 
-    assert position >= 0 and position <= 8, "position should be between 0 and 8"
+    assert_position_is_valid(position)
     last_move_position = position
     board[position] = player
 
@@ -212,27 +220,47 @@ def handle_whether_to_play_again(board: list[str], game_state: str) -> None:
         print_hint("Thanks for playing!")
         exit(0)
 
-def next_round(board: list[str]) -> None:
-    input_player_move = NOT_FOUND
+def ask_player_for_move_position(board: list[str]) -> int:
+    raw_player_move = ""
 
-    while input_player_move < 0 or input_player_move > 8 or is_position_already_taken(board, input_player_move):
-        print("Player, you are X, select a move (0-8): ", end="")
-        input_player_move = input()
+    while True:
+        # Having the move be one-indexed is more intuitive for humans.
+        print("Player, you are X, select a move (1-9): ", end="")
+
+        raw_player_move = input()
         clear_screen()
-        input_player_move = NOT_FOUND if input_player_move.isdigit() == False else int(input_player_move)
+        is_valid_position = raw_player_move.isdigit() and int(raw_player_move) >= 1 and int(raw_player_move) <= 9
 
-    play_move(board, input_player_move, CELL_X)
+        if not is_valid_position:
+            continue
+
+        # Adjust the move to be zero-indexed.
+        adjusted_player_move_position = int(raw_player_move) - 1
+
+        if is_position_already_taken(board, adjusted_player_move_position):
+            print_hint("That position is already taken!")
+
+            continue
+
+        assert_position_is_valid(adjusted_player_move_position)
+
+        return adjusted_player_move_position
+
+def next_round(board: list[str]) -> None:
+    # Ask the player for their move, and perform it.
+    player_move_position = ask_player_for_move_position(board)
+    play_move(board, player_move_position, CELL_X)
     board_state = evaluate_board(board)
 
     # If the game ended, ask if the player wishes to play again.
-    if board_state != "Open":
+    if board_state != BOARD_STATE_OPEN:
         handle_whether_to_play_again(board, board_state)
-    # If the game is still open, play the computers move.
+    # If the game is still open, play the computers move, and
+    # continue the game.
     else:
-        computer_move(board)
+        play_computer_move(board)
         print_hint("O's move:")
         print_board(board)
-        board_state = evaluate_board(board)
         next_round(board)
 
 # Entry point; starts the game.
