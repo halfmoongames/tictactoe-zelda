@@ -43,6 +43,7 @@ def does_terminal_support_color() -> bool:
     return term in color_terms
 
 def clear_screen() -> None:
+    """Clears the terminal screen, with multi-platform support."""
     # On Windows, the `cls` command will clear the screen.
     if os.name == "nt":
         os.system("cls")
@@ -54,15 +55,21 @@ def print_hint(text: str) -> None:
     print(color(text, COLOR_GRAY))
 
 def color(text: str, color: str) -> str:
-    "returns the input text with the input color."""
+    """Returns the input text with the input color."""
     # Do not colorize if the terminal does not support color.
     if not does_terminal_support_color():
         return text
 
     return "\033[" + color + "m" + text + "\033[0m"
 
+def rainbow(text: str) -> str:
+    """Returns the input text with a rainbow color."""
+    RAINBOW_COLORS = ["31", "33", "32", "34", "35", "36"]
+
+    return "".join([color(text[i], RAINBOW_COLORS[i % len(RAINBOW_COLORS)]) for i in range(len(text))])
+
 def get_available_positions(board: list[str]) -> list[int]:
-    """returns a list of available moves on the current board."""
+    """Returns a list of available moves (positions) on the given board."""
     available_positions = []
 
     for i in range(CELL_COUNT):
@@ -99,14 +106,17 @@ def minimax(board: list[str], depth: int, is_maximizing_player: bool) -> int:
     return best_score
 
 def clear_board(board: list[str], fill = CELL_EMPTY) -> None:
-    """clears the input board. Optionally with a different fill (default is space)"""
+    """Clears the input board. Optionally with a different fill (default is empty cell)."""
+    VALID_FILL_VALUES = [CELL_EMPTY, CELL_X, CELL_O]
+
+    assert fill in VALID_FILL_VALUES, "fill should be one of the valid fill values"
     board.clear()
 
     for _ in range(CELL_COUNT):
         board.append(fill)
 
 def print_board(board: list[str]) -> None:
-    """prints a board with the integers 0-8 filling each space. Optionally, insert your own board to print."""
+    """Prints the given board, along with the integers 1-9 filling each empty cell."""
     global last_move_position
 
     BOARD_BORDER_CHAR = "|"
@@ -130,27 +140,26 @@ def print_board(board: list[str]) -> None:
             print(BOARD_BORDER_CHAR, character, end = " ")
 
 def is_position_already_taken(board: list[str], position: int) -> bool:
-    """returns true if a move has already been played (X or O) on the board."""
+    """Returns true if a move has already been played (X or O) on the board."""
     assert_position_is_valid(position)
 
     return board[position] != CELL_EMPTY
 
 def evaluate_board(board: list[str]) -> str:
-    """determines if X or O won the game on the given board."""
-    possible_win_patterns = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [6, 4, 2]]
+    """Determines if player X or O won the game on the given board, or if the game was a tie or still open."""
+    win_patterns = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [6, 4, 2]]
 
-    for i in range(len(possible_win_patterns)):
-        positions = [possible_win_patterns[i][0], possible_win_patterns[i][1], possible_win_patterns[i][2]]
+    for i in range(len(win_patterns)):
+        positions = [win_patterns[i][0], win_patterns[i][1], win_patterns[i][2]]
         is_win = board[positions[0]] == board[positions[1]] == board[positions[2]] != CELL_EMPTY
 
         if is_win:
-            return board[positions[0]]
+            return BOARD_STATE_X_WINS if board[positions[0]] == CELL_X else BOARD_STATE_O_WINS
 
     return BOARD_STATE_TIE if board.count(CELL_EMPTY) == 0 else BOARD_STATE_OPEN
 
 def play_computer_move(board: list[str]) -> None:
-    """computerMove(currentBoard) runs an algorithm to fill in the O move."""
-
+    """Runs the minimax algorithm to perform the computer's move."""
     best_move_position = NOT_FOUND
     best_score = -float("inf")
     available_positions = get_available_positions(board)
@@ -173,10 +182,10 @@ def play_computer_move(board: list[str]) -> None:
             best_move_position = available_position
 
     assert best_move_position != NOT_FOUND, "a computer move should always be found when there are available positions"
-    play_move(board, best_move_position, CELL_O)
+    perform_move(board, best_move_position, CELL_O)
 
-def play_move(board: list[str], position: int, player: str) -> None:
-    """playMove(currentBoard, move, player) plays the input move on the board for the input player."""
+def perform_move(board: list[str], position: int, player: str) -> None:
+    """Plays the input move on the board for the input player."""
     global last_move_position
 
     assert_position_is_valid(position)
@@ -197,15 +206,17 @@ def ask_yes_or_no_question(question: str) -> bool:
     return response == YES
 
 def handle_whether_to_play_again(board: list[str], game_state: str) -> None:
+    global last_move_position
+
     # The game hasn't ended yet. Nothing to do here.
     if game_state == BOARD_STATE_OPEN:
         return
 
     # Print how the game ended.
     if game_state == BOARD_STATE_X_WINS:
-        print_hint("Beat the computer! X wins.")
+        print_hint("You beat the computer! X wins.")
     elif game_state == BOARD_STATE_O_WINS:
-        print_hint("Beaten by a computer! O wins.")
+        print_hint("You were beaten by a computer! O wins.")
     else:
         print_hint("Game was a tie.")
 
@@ -213,9 +224,12 @@ def handle_whether_to_play_again(board: list[str], game_state: str) -> None:
     player_wants_to_replay = ask_yes_or_no_question("Play another game?")
 
     if player_wants_to_replay:
+        last_move_position = NOT_FOUND
         clear_board(board)
-        print("New Game! Here are your board options:")
+        clear_screen()
+        print_hint("New game started. Good luck!")
         print_board(board)
+        next_round(board)
     else:
         print_hint("Thanks for playing!")
         exit(0)
@@ -224,8 +238,9 @@ def ask_player_for_move_position(board: list[str]) -> int:
     raw_player_move = ""
 
     while True:
-        # Having the move be one-indexed is more intuitive for humans.
-        print("Player, you are X, select a move (1-9): ", end="")
+        # Having the move position be one-indexed when displaying it
+        # to the player is more intuitive for humans.
+        print("Select a move (1-9): ", end="")
 
         raw_player_move = input()
         clear_screen()
@@ -234,7 +249,10 @@ def ask_player_for_move_position(board: list[str]) -> int:
         if not is_valid_position:
             continue
 
-        # Adjust the move to be zero-indexed.
+        # Adjust the move to be zero-indexed after reading it from the
+        # player's input. This way, the one-indexed position is only
+        # shown to the player, and the zero-indexed position is used
+        # internally.
         adjusted_player_move_position = int(raw_player_move) - 1
 
         if is_position_already_taken(board, adjusted_player_move_position):
@@ -249,7 +267,7 @@ def ask_player_for_move_position(board: list[str]) -> int:
 def next_round(board: list[str]) -> None:
     # Ask the player for their move, and perform it.
     player_move_position = ask_player_for_move_position(board)
-    play_move(board, player_move_position, CELL_X)
+    perform_move(board, player_move_position, CELL_X)
     board_state = evaluate_board(board)
 
     # If the game ended, ask if the player wishes to play again.
@@ -259,7 +277,7 @@ def next_round(board: list[str]) -> None:
     # continue the game.
     else:
         play_computer_move(board)
-        print_hint("O's move:")
+        print_hint("The computer just played. Now it's your turn!")
         print_board(board)
         next_round(board)
 
@@ -270,7 +288,7 @@ if __name__ == "__main__":
     clear_board(board)
 
     # Greet the player, only once at the start of the game.
-    print_hint("Welcome to Tic-Tac-Toe!")
+    print(color("Welcome to", COLOR_GRAY), rainbow("Tic-Tac-Toe"))
     print_hint("You\'ll be playing against the computer.")
     print_hint("Play the game by selecting any box via its corresponding value.")
     print_board(board)
