@@ -6,7 +6,7 @@ import sys
 COLOR_RED: str = "31"
 COLOR_GREEN: str = "32"
 COLOR_GRAY: str = "90"
-COLOR_YELLOW = "33"
+COLOR_YELLOW: str = "33"
 POSITION_MIN: int = 0
 POSITION_MAX: int = 8
 CELL_COUNT: int = 9
@@ -197,7 +197,7 @@ def ask_yes_or_no_question(question: str) -> bool:
     NO: str = "n"
 
     print(question + color(" [y/n]: ", COLOR_GRAY), end = "")
-    response = input()
+    response = input().strip()
 
     # Recur if the response is invalid.
     if response != YES and response != NO:
@@ -212,15 +212,18 @@ def handle_whether_to_play_again(board: list[str], game_state: str) -> None:
     if game_state == BOARD_STATE_OPEN:
         return
 
-    # Print how the game ended.
-    if game_state == BOARD_STATE_X_WINS:
-        print_hint("You beat the computer! X wins.")
-    elif game_state == BOARD_STATE_O_WINS:
-        print_hint("You were beaten by a computer! O wins.")
-    else:
-        print_hint("Game was a tie.")
+    hint = "Game was a tie."
 
+    if game_state == BOARD_STATE_X_WINS:
+        hint = "You beat the computer! X wins."
+    elif game_state == BOARD_STATE_O_WINS:
+        hint = "You were beaten by a computer! O wins."
+
+    # Print how the game ended.
+    clear_screen()
+    print_hint(hint)
     print_board(board)
+
     player_wants_to_replay = ask_yes_or_no_question("Play another game?")
 
     if player_wants_to_replay:
@@ -228,7 +231,6 @@ def handle_whether_to_play_again(board: list[str], game_state: str) -> None:
         clear_board(board)
         clear_screen()
         print_hint("New game started. Good luck!")
-        print_board(board)
         next_round(board)
     else:
         print_hint("Thanks for playing!")
@@ -238,11 +240,13 @@ def ask_player_for_move_position(board: list[str]) -> int:
     raw_player_move = ""
 
     while True:
+        print_board(board)
+
         # Having the move position be one-indexed when displaying it
         # to the player is more intuitive for humans.
         print("Select a move (1-9): ", end="")
 
-        raw_player_move = input()
+        raw_player_move = input().strip()
         clear_screen()
         is_valid_position = raw_player_move.isdigit() and int(raw_player_move) >= 1 and int(raw_player_move) <= 9
 
@@ -256,8 +260,6 @@ def ask_player_for_move_position(board: list[str]) -> int:
         adjusted_player_move_position = int(raw_player_move) - 1
 
         if is_position_already_taken(board, adjusted_player_move_position):
-            print_hint("That position is already taken!")
-
             continue
 
         assert_position_is_valid(adjusted_player_move_position)
@@ -277,8 +279,8 @@ def next_round(board: list[str]) -> None:
     # continue the game.
     else:
         play_computer_move(board)
+        clear_screen()
         print_hint("The computer just played. Now it's your turn!")
-        print_board(board)
         next_round(board)
 
 # Entry point; starts the game.
@@ -288,8 +290,8 @@ if __name__ == "__main__":
     clear_board(board)
 
     # Greet the player, only once at the start of the game.
+    clear_screen()
     print(color("Welcome to", COLOR_GRAY), rainbow("Tic-Tac-Toe"))
     print_hint("You\'ll be playing against the computer.")
     print_hint("Play the game by selecting any box via its corresponding value.")
-    print_board(board)
     next_round(board)
