@@ -240,8 +240,12 @@ def finalize_round(board: list[str]) -> None:
 
 def ask_player_for_move_position(board: list[str]) -> int:
     raw_player_move = ""
+    was_selection_invalid = False
 
     while True:
+        if was_selection_invalid:
+            print_hint("Invalid selection. Please try again.")
+
         print_board(board)
 
         # Having the move position be one-indexed when displaying it
@@ -253,6 +257,8 @@ def ask_player_for_move_position(board: list[str]) -> int:
         is_valid_position = raw_player_move.isdigit() and int(raw_player_move) >= 1 and int(raw_player_move) <= 9
 
         if not is_valid_position:
+            was_selection_invalid = True
+
             continue
 
         # Adjust the move to be zero-indexed after reading it from the
@@ -262,6 +268,8 @@ def ask_player_for_move_position(board: list[str]) -> int:
         adjusted_player_move_position = int(raw_player_move) - 1
 
         if is_position_already_taken(board, adjusted_player_move_position):
+            was_selection_invalid = True
+
             continue
 
         assert_position_is_valid(adjusted_player_move_position)
