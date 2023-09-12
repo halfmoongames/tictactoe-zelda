@@ -196,7 +196,7 @@ def ask_yes_or_no_question(question: str) -> bool:
     YES: str = "y"
     NO: str = "n"
 
-    print(question + color(" [y/n]: ", COLOR_GRAY), end = "")
+    print(question + color(" [y/n] → ", COLOR_GRAY), end = "")
     response = input().strip()
 
     # Recur if the response is invalid.
@@ -250,7 +250,7 @@ def ask_player_for_move_position(board: list[str]) -> int:
 
         # Having the move position be one-indexed when displaying it
         # to the player is more intuitive for humans.
-        print("Select a move (1-9): ", end="")
+        print("Select a move (1-9) → ", end="")
 
         raw_player_move = input().strip()
         clear_screen()
