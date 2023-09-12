@@ -86,9 +86,9 @@ def minimax(board: list[str], depth: int, is_maximizing_player: bool) -> int:
     # Base case: if the game is over, return the score.
     if depth == 0 or is_board_in_terminal_state:
         if board_state == BOARD_STATE_X_WINS:
-            return WIN_SCORE - depth
-        elif board_state == BOARD_STATE_O_WINS:
             return depth - WIN_SCORE
+        elif board_state == BOARD_STATE_O_WINS:
+            return WIN_SCORE - depth
         else:
             # Tie has no score.
             return 0
@@ -205,18 +205,20 @@ def ask_yes_or_no_question(question: str) -> bool:
 
     return response == YES
 
-def handle_whether_to_play_again(board: list[str], game_state: str) -> None:
+def finalize_round(board: list[str]) -> None:
     global last_move_position
 
+    board_state = evaluate_board(board)
+
     # The game hasn't ended yet. Nothing to do here.
-    if game_state == BOARD_STATE_OPEN:
+    if board_state == BOARD_STATE_OPEN:
         return
 
     hint = "Game was a tie."
 
-    if game_state == BOARD_STATE_X_WINS:
+    if board_state == BOARD_STATE_X_WINS:
         hint = "You beat the computer! X wins."
-    elif game_state == BOARD_STATE_O_WINS:
+    elif board_state == BOARD_STATE_O_WINS:
         hint = "You were beaten by a computer! O wins."
 
     # Print how the game ended.
@@ -270,15 +272,18 @@ def next_round(board: list[str]) -> None:
     # Ask the player for their move, and perform it.
     player_move_position = ask_player_for_move_position(board)
     perform_move(board, player_move_position, CELL_X)
-    board_state = evaluate_board(board)
 
     # If the game ended, ask if the player wishes to play again.
-    if board_state != BOARD_STATE_OPEN:
-        handle_whether_to_play_again(board, board_state)
-    # If the game is still open, play the computers move, and
-    # continue the game.
+    if evaluate_board(board) != BOARD_STATE_OPEN:
+        finalize_round(board)
+
+    play_computer_move(board)
+
+    # Re-evaluate the board state after the computer's move.
+    if evaluate_board(board) != BOARD_STATE_OPEN:
+        finalize_round(board)
+    # If the game is still open, continue to the next round.
     else:
-        play_computer_move(board)
         clear_screen()
         print_hint("The computer just played. Now it's your turn!")
         next_round(board)
