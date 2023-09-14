@@ -78,6 +78,7 @@ def get_available_positions(board: list[str]) -> list[int]:
 
     return available_positions
 
+# TODO: Implement alpha-beta pruning to improve performance.
 def minimax(board: list[str], depth: int, is_maximizing_player: bool) -> int:
     WIN_SCORE = 10
     board_state = evaluate_board(board)
@@ -123,21 +124,21 @@ def print_board(board: list[str]) -> None:
     BOARD_SIZE = 3
 
     for i in range(CELL_COUNT):
-        character = color(str(i + 1), COLOR_GRAY)
+        cell_char = color(str(i + 1), COLOR_GRAY)
 
         if last_move_position == i:
-            character = color(board[i], COLOR_YELLOW)
+            cell_char = color(board[i], COLOR_YELLOW)
         elif board[i] == CELL_X:
-            character = color(board[i], COLOR_RED)
+            cell_char = color(board[i], COLOR_RED)
         elif board[i] == CELL_O:
-            character = color(board[i], COLOR_GREEN)
+            cell_char = color(board[i], COLOR_GREEN)
 
         is_last_column = (i + 1) % BOARD_SIZE == 0
 
         if is_last_column:
-            print(BOARD_BORDER_CHAR, character, BOARD_BORDER_CHAR)
+            print(BOARD_BORDER_CHAR, cell_char, BOARD_BORDER_CHAR)
         else:
-            print(BOARD_BORDER_CHAR, character, end = " ")
+            print(BOARD_BORDER_CHAR, cell_char, end = " ")
 
 def is_position_already_taken(board: list[str], position: int) -> bool:
     """Returns true if a move has already been played (X or O) on the board."""
@@ -151,11 +152,15 @@ def evaluate_board(board: list[str]) -> str:
 
     for i in range(len(win_patterns)):
         positions = [win_patterns[i][0], win_patterns[i][1], win_patterns[i][2]]
-        is_win = board[positions[0]] == board[positions[1]] == board[positions[2]] != CELL_EMPTY
+        someone_did_win = board[positions[0]] == board[positions[1]] == board[positions[2]] != CELL_EMPTY
 
-        if is_win:
+        if someone_did_win:
+            # Choose the winner based on the symbol at the first
+            # position in the win pattern.
             return BOARD_STATE_X_WINS if board[positions[0]] == CELL_X else BOARD_STATE_O_WINS
 
+    # If there are no empty cells, the game is a tie.
+    # Otherwise, the game is still open.
     return BOARD_STATE_TIE if board.count(CELL_EMPTY) == 0 else BOARD_STATE_OPEN
 
 def play_computer_move(board: list[str]) -> None:
@@ -173,7 +178,7 @@ def play_computer_move(board: list[str]) -> None:
         board[available_position] = CELL_O
         move_score = minimax(board, len(available_positions), False)
 
-        # reset the available position to its original state to prevent
+        # Reset the available position to its original state to prevent
         # contamination of the board.
         board[available_position] = CELL_EMPTY
 
@@ -188,6 +193,9 @@ def perform_move(board: list[str], position: int, player: str) -> None:
     """Plays the input move on the board for the input player."""
     global last_move_position
 
+    VALID_PLAYERS = [CELL_X, CELL_O]
+
+    assert player in VALID_PLAYERS, "player should be one of the valid players (either X or O)"
     assert_position_is_valid(position)
     last_move_position = position
     board[position] = player
