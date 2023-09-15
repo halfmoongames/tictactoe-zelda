@@ -2,6 +2,7 @@
 
 import os
 import sys
+import time
 
 COLOR_RED: str = "31"
 COLOR_GREEN: str = "32"
@@ -18,9 +19,11 @@ BOARD_STATE_OPEN: str = "Open"
 BOARD_STATE_TIE: str = "Tie"
 BOARD_STATE_X_WINS: str = "X wins"
 BOARD_STATE_O_WINS: str = "O wins"
+DEBUG_ALPHA_BETA_PRUNING_ENABLED: bool = True
+DEBUG_MEASURE_MINIMAX_PERFORMANCE: bool = False
 
-# TODO: This could be passed as a parameter to avoid having it be a global variable. Determine whether there is a benefit to doing so, or if it complicates things too much.
 last_move_position: int = NOT_FOUND
+debug_minimax_call_counter: int = 0
 
 def assert_position_is_valid(position: int) -> None:
     assert POSITION_MIN <= position <= POSITION_MAX, "position should be between 0 and 8"
@@ -78,8 +81,10 @@ def get_available_positions(board: list[str]) -> list[int]:
 
     return available_positions
 
-# TODO: Implement alpha-beta pruning to improve performance.
-def minimax(board: list[str], depth: int, is_maximizing_player: bool) -> int:
+def minimax_alpha_beta(board: list[str], depth: int, is_maximizing_player: bool, alpha: int, beta: int) -> int:
+    global debug_minimax_call_counter
+
+    debug_minimax_call_counter += 1
     WIN_SCORE = 10
     board_state = evaluate_board(board)
     is_board_in_terminal_state = board_state != BOARD_STATE_OPEN
@@ -96,15 +101,29 @@ def minimax(board: list[str], depth: int, is_maximizing_player: bool) -> int:
 
     comparator = max if is_maximizing_player else min
     best_score = -float("inf") if is_maximizing_player else float("inf")
+    phi = alpha if is_maximizing_player else beta
 
     for available_position in get_available_positions(board):
         previous_position_value = board[available_position]
         board[available_position] = CELL_O if is_maximizing_player else CELL_X
-        score = minimax(board, depth - 1, not is_maximizing_player)
+        score = minimax_alpha_beta(board, depth - 1, not is_maximizing_player, alpha, beta)
         board[available_position] = previous_position_value
         best_score = comparator(best_score, score)
+        phi = comparator(phi, best_score)
+
+        # Apply alpha-beta pruning.
+        if DEBUG_ALPHA_BETA_PRUNING_ENABLED and beta <= alpha:
+            break
 
     return best_score
+
+def minimax(board: list[str], depth: int, is_maximizing_player: bool) -> int:
+    alpha = -float("inf") if is_maximizing_player else float("inf")
+    beta = float("inf") if is_maximizing_player else -float("inf")
+
+    assert alpha != beta, "alpha and beta should not be equal"
+
+    return minimax_alpha_beta(board, depth, is_maximizing_player, alpha, beta)
 
 def clear_board(board: list[str], fill = CELL_EMPTY) -> None:
     """Clears the input board. Optionally with a different fill (default is empty cell)."""
@@ -165,6 +184,8 @@ def evaluate_board(board: list[str]) -> str:
 
 def play_computer_move(board: list[str]) -> None:
     """Runs the minimax algorithm to perform the computer's move."""
+    global debug_minimax_call_counter
+
     best_move_position = NOT_FOUND
     best_score = -float("inf")
     available_positions = get_available_positions(board)
@@ -173,6 +194,8 @@ def play_computer_move(board: list[str]) -> None:
     # move anywhere.
     if len(available_positions) == 0:
         return
+
+    start_time = time.time()
 
     for available_position in available_positions:
         board[available_position] = CELL_O
@@ -185,6 +208,17 @@ def play_computer_move(board: list[str]) -> None:
         if move_score > best_score:
             best_score = move_score
             best_move_position = available_position
+
+    if DEBUG_MEASURE_MINIMAX_PERFORMANCE:
+        end_time = time.time()
+        elapsed_time_ms = (end_time - start_time) * 1000
+
+        print_hint("Minimax call count: " + str(debug_minimax_call_counter))
+        print_hint("Minimax performance: " + str(elapsed_time_ms) + "ms")
+        print_hint("Alpha-beta pruning: " + str(DEBUG_ALPHA_BETA_PRUNING_ENABLED))
+        print_hint("<Press enter to continue>")
+        input()
+        debug_minimax_call_counter = 0
 
     assert best_move_position != NOT_FOUND, "a computer move should always be found when there are available positions"
     perform_move(board, best_move_position, CELL_O)
