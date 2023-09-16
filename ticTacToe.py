@@ -21,79 +21,107 @@ BOARD_STATE_X_WINS: str = "X wins"
 BOARD_STATE_O_WINS: str = "O wins"
 TIME_FACTOR_MS = 1000
 IS_BENCHMARK_MODE: bool = "--benchmark" in sys.argv
-BENCHMARK_RUNNING_TIME_S: int = 10
+BENCHMARK_ALLOWED_RUNNING_TIME_S: int = 10
 
 last_move_position: int = NOT_FOUND
 
-def benchmark_step(use_alpha_beta_pruning: bool) -> None:
-    board = []
+def benchmark_step(use_alpha_beta_pruning: bool) -> (int, int):
+    board = new_blank_board()
 
-    clear_board(board)
     board[0] = CELL_X
 
     start_time = time.time()
+    total_call_count = 0
 
     for _ in range(CELL_COUNT):
-        minimax(board, CELL_COUNT, False, use_alpha_beta_pruning)
+        _, call_count = minimax(board, CELL_COUNT, False, use_alpha_beta_pruning)
 
-    return (time.time() - start_time) * TIME_FACTOR_MS
+        total_call_count += call_count
+
+    end_time = time.time()
+    elapsed_time_ms = (end_time - start_time) * TIME_FACTOR_MS
+
+    return (elapsed_time_ms, total_call_count)
 
 def print_benchmark_results(
     naive_step_reference_time_ms: int,
     actual_benchmark_duration_s: int,
     iterations: int,
     with_alpha_beta_step_time_sum: int,
-    without_alpha_beta_step_time_sum: int
+    with_alpha_beta_call_count: int,
+    without_alpha_beta_step_time_sum: int,
+    without_alpha_beta_call_count: int
 ) -> None:
-    with_alpha_beta_time_avg = with_alpha_beta_step_time_sum / iterations
-    without_alpha_beta_time_avg = without_alpha_beta_step_time_sum / iterations
-    improvement_percentage = abs(with_alpha_beta_time_avg - without_alpha_beta_time_avg) / without_alpha_beta_time_avg * 100
-    improvement_factor = without_alpha_beta_time_avg / with_alpha_beta_time_avg
-    expected_benchmark_duration_s = naive_step_reference_time_ms * iterations / TIME_FACTOR_MS
-    benchmark_duration_difference_percentage = abs(actual_benchmark_duration_s - expected_benchmark_duration_s) / expected_benchmark_duration_s * 100
+    DECIMAL_PRECISION = 3
+
+    with_alpha_beta_time_avg = round(with_alpha_beta_step_time_sum / iterations, DECIMAL_PRECISION)
+    without_alpha_beta_time_avg = round(without_alpha_beta_step_time_sum / iterations, DECIMAL_PRECISION)
+    improvement_percentage = round(abs(with_alpha_beta_call_count - without_alpha_beta_call_count) / without_alpha_beta_call_count * 100, DECIMAL_PRECISION)
+    improvement_factor = round(without_alpha_beta_call_count / with_alpha_beta_call_count, DECIMAL_PRECISION)
+    expected_benchmark_duration_s = round(naive_step_reference_time_ms * iterations / TIME_FACTOR_MS, DECIMAL_PRECISION)
+    benchmark_duration_difference_percentage = round(abs(actual_benchmark_duration_s - expected_benchmark_duration_s) / expected_benchmark_duration_s * 100, DECIMAL_PRECISION)
 
     print_hint("Step iterations: " + str(iterations))
-    print_hint("Average time per step [-alpha-beta pruning]: " + str(without_alpha_beta_time_avg) + "ms")
-    print_hint("Average time per step [+alpha-beta pruning]: " + str(with_alpha_beta_time_avg) + "ms")
+    print_hint("Call count [-alpha-beta pruning]: " + str(without_alpha_beta_call_count))
+    print_hint("Call count [+alpha-beta pruning]: " + str(with_alpha_beta_call_count))
+    print_hint("Avg. time per step [-alpha-beta pruning]: " + str(without_alpha_beta_time_avg) + "ms")
+    print_hint("Avg. time per step [+alpha-beta pruning]: " + str(with_alpha_beta_time_avg) + "ms")
     print_hint("Improvement (%): " + str(improvement_percentage) + "%")
     print_hint("Improvement factor: " + str(improvement_factor) + "x")
     print_hint("Expected benchmark running time: " + str(expected_benchmark_duration_s) + "s")
-    print_hint("Actual benchmark running time: " + str(actual_benchmark_duration_s) + "s")
+    print_hint("Actual benchmark running time: " + str(round(actual_benchmark_duration_s, DECIMAL_PRECISION)) + "s")
     print_hint("Benchmark duration difference (%): " + str(benchmark_duration_difference_percentage) + "%")
 
 def perform_benchmark_for_depth(depth: int, case_name: str) -> None:
-    naive_step_reference_time_ms = benchmark_step(False)
-    computed_iterations = int(BENCHMARK_RUNNING_TIME_S * TIME_FACTOR_MS / naive_step_reference_time_ms)
+    naive_step_reference_time_ms, _ = benchmark_step(False)
+    computed_iterations = int(BENCHMARK_ALLOWED_RUNNING_TIME_S * TIME_FACTOR_MS / naive_step_reference_time_ms)
 
     print("Running " + color(case_name, COLOR_YELLOW) + " benchmark (depth=" + str(depth) + ")")
 
     benchmark_start_time = time.time()
     with_alpha_beta_step_time_sum = 0
+    with_alpha_beta_call_count = 0
 
     # Benchmark the minimax algorithm with alpha-beta pruning.
     for _ in range(computed_iterations):
-        with_alpha_beta_step_time_sum += benchmark_step(True)
+        elapsed_time, call_count = benchmark_step(True)
+
+        with_alpha_beta_step_time_sum += elapsed_time
+        with_alpha_beta_call_count += call_count
 
     # Benchmark the minimax algorithm without alpha-beta pruning.
     without_alpha_beta_step_time_sum = 0
+    without_alpha_beta_call_count = 0
 
     for _ in range(computed_iterations):
-        without_alpha_beta_step_time_sum += benchmark_step(False)
+        elapsed_time, call_count = benchmark_step(False)
+
+        without_alpha_beta_step_time_sum += elapsed_time
+        without_alpha_beta_call_count += call_count
 
     actual_benchmark_duration_s = time.time() - benchmark_start_time
 
-    print_benchmark_results(naive_step_reference_time_ms, actual_benchmark_duration_s, computed_iterations, with_alpha_beta_step_time_sum, without_alpha_beta_step_time_sum)
+    print_benchmark_results(
+        naive_step_reference_time_ms,
+        actual_benchmark_duration_s,
+        computed_iterations,
+        with_alpha_beta_step_time_sum,
+        with_alpha_beta_call_count,
+        without_alpha_beta_step_time_sum,
+        without_alpha_beta_call_count
+    )
 
 def benchmark_minimax_alpha_beta() -> None:
     WORST_CASE_DEPTH: int = 9
     BEST_CASE_DEPTH: int = 1
-    AVERAGE_CASE_DEPTH: int = (WORST_CASE_DEPTH + BEST_CASE_DEPTH) // 2
+
+    average_case_depth = (WORST_CASE_DEPTH + BEST_CASE_DEPTH) // 2
 
     print_hint("Benchmark mode enabled")
-    print_hint("Running time per benchmark: " + str(BENCHMARK_RUNNING_TIME_S) + "s")
+    print_hint("Allowed running time per benchmark case: " + str(BENCHMARK_ALLOWED_RUNNING_TIME_S) + "s")
     perform_benchmark_for_depth(WORST_CASE_DEPTH, "worst-case")
     perform_benchmark_for_depth(BEST_CASE_DEPTH, "best-case")
-    perform_benchmark_for_depth(AVERAGE_CASE_DEPTH, "average-case")
+    perform_benchmark_for_depth(average_case_depth, "average-case")
 
 def assert_position_is_valid(position: int) -> None:
     assert POSITION_MIN <= position <= POSITION_MAX, "position should be between 0 and 8"
@@ -154,60 +182,99 @@ def get_available_positions(board: list[str]) -> list[int]:
 def minimax_aux(
     board: list[str],
     depth: int,
-    is_maximizing_player: bool,
+    is_maximizing_player_o: bool,
     alpha: int,
     beta: int,
     use_alpha_beta_pruning: bool
-) -> int:
-    WIN_SCORE = 10
+) -> (int, int):
+    BIAS_SCORE = 10
+
+    assert depth >= 0, "depth should be non-negative"
+
     board_state = evaluate_board(board)
     is_board_in_terminal_state = board_state != BOARD_STATE_OPEN
 
-    # Base case: if the game is over, return the score.
+    # Base case: if the game is over in this recursion branch
+    # compute the score and return it.
     if depth == 0 or is_board_in_terminal_state:
+        encouragement = BIAS_SCORE + depth
+        penalty = -(BIAS_SCORE + depth)
+
         if board_state == BOARD_STATE_X_WINS:
-            return depth - WIN_SCORE
+            score = penalty if is_maximizing_player_o else encouragement
+
+            return score, 1
         elif board_state == BOARD_STATE_O_WINS:
-            return WIN_SCORE - depth
+            score = encouragement if is_maximizing_player_o else penalty
+
+            return score, 1
         else:
             # Tie has no score.
-            return 0
+            return 0, 1
 
-    comparator = max if is_maximizing_player else min
-    best_score = -float("inf") if is_maximizing_player else float("inf")
-    phi = alpha if is_maximizing_player else beta
+    comparator = max if is_maximizing_player_o else min
+    best_score = -float("inf") if is_maximizing_player_o else float("inf")
+    total_call_count = 0
 
     for available_position in get_available_positions(board):
-        previous_position_value = board[available_position]
-        board[available_position] = CELL_O if is_maximizing_player else CELL_X
-        score = minimax_aux(board, depth - 1, not is_maximizing_player, alpha, beta, use_alpha_beta_pruning)
-        board[available_position] = previous_position_value
+        # Save the value of the current position, so that it can be
+        # restored after the recursive call.
+        original_value = board[available_position]
+
+        board[available_position] = CELL_O if is_maximizing_player_o else CELL_X
+
+        score, call_count = minimax_aux(
+            board,
+            depth - 1,
+            # Inversion occurs because this emulates the other player's turn.
+            # In other words, this emulates a turn change.
+            not is_maximizing_player_o,
+            alpha,
+            beta,
+            use_alpha_beta_pruning
+        )
+
+        board[available_position] = original_value
         best_score = comparator(best_score, score)
-        phi = comparator(phi, best_score)
+        total_call_count += call_count
+
+        # Update alpha and beta values.
+        if is_maximizing_player_o:
+            alpha = max(alpha, best_score)
+        else:
+            beta = min(beta, best_score)
 
         # Apply alpha-beta pruning.
-        if use_alpha_beta_pruning and beta <= alpha:
-            break
+        # if use_alpha_beta_pruning and alpha >= beta:
+        #     break
 
-    return best_score
+    return (best_score, total_call_count + 1)
 
-def minimax(board: list[str], depth: int, is_maximizing_player: bool, use_alpha_beta_pruning: bool) -> int:
-    alpha = -float("inf") if is_maximizing_player else float("inf")
-    beta = float("inf") if is_maximizing_player else -float("inf")
+def minimax(
+    board: list[str],
+    depth: int,
+    is_maximizing_player_o: bool,
+    use_alpha_beta_pruning: bool
+) -> (int, int):
+    alpha = -float("inf")
+    beta = float("inf")
 
-    assert alpha != beta, "alpha and beta should not be equal"
+    return minimax_aux(
+        board,
+        depth,
+        is_maximizing_player_o,
+        alpha,
+        beta,
+        use_alpha_beta_pruning
+    )
 
-    return minimax_aux(board, depth, is_maximizing_player, alpha, beta, use_alpha_beta_pruning)
-
-def clear_board(board: list[str], fill = CELL_EMPTY) -> None:
-    """Clears the input board. Optionally with a different fill (default is empty cell)."""
-    VALID_FILL_VALUES = [CELL_EMPTY, CELL_X, CELL_O]
-
-    assert fill in VALID_FILL_VALUES, "fill should be one of the valid fill values"
-    board.clear()
+def new_blank_board() -> list[str]:
+    board = []
 
     for _ in range(CELL_COUNT):
-        board.append(fill)
+        board.append(CELL_EMPTY)
+
+    return board
 
 def print_board(board: list[str]) -> None:
     """Prints the given board, along with the integers 1-9 filling each empty cell."""
@@ -269,7 +336,8 @@ def play_computer_move(board: list[str]) -> None:
 
     for available_position in available_positions:
         board[available_position] = CELL_O
-        move_score = minimax(board, len(available_positions), False)
+
+        move_score, _ = minimax(board, len(available_positions), True, True)
 
         # Reset the available position to its original state to prevent
         # contamination of the board.
@@ -306,7 +374,7 @@ def ask_yes_or_no_question(question: str) -> bool:
 
     return response == YES
 
-def finalize_round(board: list[str]) -> None:
+def finalize_game(board: list[str]) -> None:
     global last_move_position
 
     board_state = evaluate_board(board)
@@ -315,32 +383,30 @@ def finalize_round(board: list[str]) -> None:
     if board_state == BOARD_STATE_OPEN:
         return
 
-    hint = "Game was a tie."
+    ending_state_hint = "Game was a tie."
 
     if board_state == BOARD_STATE_X_WINS:
-        hint = "You beat the computer! X wins."
+        ending_state_hint = "You beat the computer! X wins."
     elif board_state == BOARD_STATE_O_WINS:
-        hint = "You were beaten by a computer! O wins."
+        ending_state_hint = "You were beaten by a computer! O wins."
 
     # Print how the game ended.
     clear_screen()
-    print_hint(hint)
+    print_hint(ending_state_hint)
     print_board(board)
 
     player_wants_to_replay = ask_yes_or_no_question("Play another game?")
 
     if player_wants_to_replay:
         last_move_position = NOT_FOUND
-        clear_board(board)
         clear_screen()
         print_hint("New game started. Good luck!")
-        next_round(board)
+        next_round(new_blank_board())
     else:
         print_hint("Thanks for playing!")
         exit(0)
 
 def ask_player_for_move_position(board: list[str]) -> int:
-    raw_player_move = ""
     was_selection_invalid = False
 
     while True:
@@ -353,9 +419,11 @@ def ask_player_for_move_position(board: list[str]) -> int:
         # to the player is more intuitive for humans.
         print("Select a move (1-9) → ", end="")
 
-        raw_player_move = input().strip()
+        one_based_player_move = input().strip()
         clear_screen()
-        is_valid_position = raw_player_move.isdigit() and int(raw_player_move) >= 1 and int(raw_player_move) <= 9
+
+        is_valid_position = one_based_player_move.isdigit() and \
+            int(one_based_player_move) >= 1 and int(one_based_player_move) <= 9
 
         if not is_valid_position:
             was_selection_invalid = True
@@ -366,7 +434,7 @@ def ask_player_for_move_position(board: list[str]) -> int:
         # player's input. This way, the one-indexed position is only
         # shown to the player, and the zero-indexed position is used
         # internally.
-        adjusted_player_move_position = int(raw_player_move) - 1
+        adjusted_player_move_position = int(one_based_player_move) - 1
 
         if is_position_already_taken(board, adjusted_player_move_position):
             was_selection_invalid = True
@@ -382,15 +450,16 @@ def next_round(board: list[str]) -> None:
     player_move_position = ask_player_for_move_position(board)
     perform_move(board, player_move_position, CELL_X)
 
-    # If the game ended, ask if the player wishes to play again.
+    # If the game ended after the player moved, finalize the game.
     if evaluate_board(board) != BOARD_STATE_OPEN:
-        finalize_round(board)
+        return finalize_game(board)
 
+    assert len(get_available_positions(board)) > 0, "there should be at least one available position on the board if the game is still open"
     play_computer_move(board)
 
     # Re-evaluate the board state after the computer's move.
     if evaluate_board(board) != BOARD_STATE_OPEN:
-        finalize_round(board)
+        finalize_game(board)
     # If the game is still open, continue to the next round.
     else:
         clear_screen()
@@ -405,8 +474,7 @@ if __name__ == "__main__":
         exit(0)
 
     # Create and populate a blank board.
-    board = []
-    clear_board(board)
+    board = new_blank_board()
 
     # Greet the player, only once at the start of the game.
     clear_screen()
