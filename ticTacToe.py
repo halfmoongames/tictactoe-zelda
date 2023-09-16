@@ -19,11 +19,81 @@ BOARD_STATE_OPEN: str = "Open"
 BOARD_STATE_TIE: str = "Tie"
 BOARD_STATE_X_WINS: str = "X wins"
 BOARD_STATE_O_WINS: str = "O wins"
-DEBUG_ALPHA_BETA_PRUNING_ENABLED: bool = True
-DEBUG_MEASURE_MINIMAX_PERFORMANCE: bool = False
+TIME_FACTOR_MS = 1000
+IS_BENCHMARK_MODE: bool = "--benchmark" in sys.argv
+BENCHMARK_RUNNING_TIME_S: int = 10
 
 last_move_position: int = NOT_FOUND
-debug_minimax_call_counter: int = 0
+
+def benchmark_step(use_alpha_beta_pruning: bool) -> None:
+    board = []
+
+    clear_board(board)
+    board[0] = CELL_X
+
+    start_time = time.time()
+
+    for _ in range(CELL_COUNT):
+        minimax(board, CELL_COUNT, False, use_alpha_beta_pruning)
+
+    return (time.time() - start_time) * TIME_FACTOR_MS
+
+def print_benchmark_results(
+    naive_step_reference_time_ms: int,
+    actual_benchmark_duration_s: int,
+    iterations: int,
+    with_alpha_beta_step_time_sum: int,
+    without_alpha_beta_step_time_sum: int
+) -> None:
+    with_alpha_beta_time_avg = with_alpha_beta_step_time_sum / iterations
+    without_alpha_beta_time_avg = without_alpha_beta_step_time_sum / iterations
+    improvement_percentage = abs(with_alpha_beta_time_avg - without_alpha_beta_time_avg) / without_alpha_beta_time_avg * 100
+    improvement_factor = without_alpha_beta_time_avg / with_alpha_beta_time_avg
+    expected_benchmark_duration_s = naive_step_reference_time_ms * iterations / TIME_FACTOR_MS
+    benchmark_duration_difference_percentage = abs(actual_benchmark_duration_s - expected_benchmark_duration_s) / expected_benchmark_duration_s * 100
+
+    print_hint("Step iterations: " + str(iterations))
+    print_hint("Average time per step [-alpha-beta pruning]: " + str(without_alpha_beta_time_avg) + "ms")
+    print_hint("Average time per step [+alpha-beta pruning]: " + str(with_alpha_beta_time_avg) + "ms")
+    print_hint("Improvement (%): " + str(improvement_percentage) + "%")
+    print_hint("Improvement factor: " + str(improvement_factor) + "x")
+    print_hint("Expected benchmark running time: " + str(expected_benchmark_duration_s) + "s")
+    print_hint("Actual benchmark running time: " + str(actual_benchmark_duration_s) + "s")
+    print_hint("Benchmark duration difference (%): " + str(benchmark_duration_difference_percentage) + "%")
+
+def perform_benchmark_for_depth(depth: int, case_name: str) -> None:
+    naive_step_reference_time_ms = benchmark_step(False)
+    computed_iterations = int(BENCHMARK_RUNNING_TIME_S * TIME_FACTOR_MS / naive_step_reference_time_ms)
+
+    print("Running " + color(case_name, COLOR_YELLOW) + " benchmark (depth=" + str(depth) + ")")
+
+    benchmark_start_time = time.time()
+    with_alpha_beta_step_time_sum = 0
+
+    # Benchmark the minimax algorithm with alpha-beta pruning.
+    for _ in range(computed_iterations):
+        with_alpha_beta_step_time_sum += benchmark_step(True)
+
+    # Benchmark the minimax algorithm without alpha-beta pruning.
+    without_alpha_beta_step_time_sum = 0
+
+    for _ in range(computed_iterations):
+        without_alpha_beta_step_time_sum += benchmark_step(False)
+
+    actual_benchmark_duration_s = time.time() - benchmark_start_time
+
+    print_benchmark_results(naive_step_reference_time_ms, actual_benchmark_duration_s, computed_iterations, with_alpha_beta_step_time_sum, without_alpha_beta_step_time_sum)
+
+def benchmark_minimax_alpha_beta() -> None:
+    WORST_CASE_DEPTH: int = 9
+    BEST_CASE_DEPTH: int = 1
+    AVERAGE_CASE_DEPTH: int = (WORST_CASE_DEPTH + BEST_CASE_DEPTH) // 2
+
+    print_hint("Benchmark mode enabled")
+    print_hint("Running time per benchmark: " + str(BENCHMARK_RUNNING_TIME_S) + "s")
+    perform_benchmark_for_depth(WORST_CASE_DEPTH, "worst-case")
+    perform_benchmark_for_depth(BEST_CASE_DEPTH, "best-case")
+    perform_benchmark_for_depth(AVERAGE_CASE_DEPTH, "average-case")
 
 def assert_position_is_valid(position: int) -> None:
     assert POSITION_MIN <= position <= POSITION_MAX, "position should be between 0 and 8"
@@ -81,10 +151,14 @@ def get_available_positions(board: list[str]) -> list[int]:
 
     return available_positions
 
-def minimax_alpha_beta(board: list[str], depth: int, is_maximizing_player: bool, alpha: int, beta: int) -> int:
-    global debug_minimax_call_counter
-
-    debug_minimax_call_counter += 1
+def minimax_aux(
+    board: list[str],
+    depth: int,
+    is_maximizing_player: bool,
+    alpha: int,
+    beta: int,
+    use_alpha_beta_pruning: bool
+) -> int:
     WIN_SCORE = 10
     board_state = evaluate_board(board)
     is_board_in_terminal_state = board_state != BOARD_STATE_OPEN
@@ -106,24 +180,24 @@ def minimax_alpha_beta(board: list[str], depth: int, is_maximizing_player: bool,
     for available_position in get_available_positions(board):
         previous_position_value = board[available_position]
         board[available_position] = CELL_O if is_maximizing_player else CELL_X
-        score = minimax_alpha_beta(board, depth - 1, not is_maximizing_player, alpha, beta)
+        score = minimax_aux(board, depth - 1, not is_maximizing_player, alpha, beta, use_alpha_beta_pruning)
         board[available_position] = previous_position_value
         best_score = comparator(best_score, score)
         phi = comparator(phi, best_score)
 
         # Apply alpha-beta pruning.
-        if DEBUG_ALPHA_BETA_PRUNING_ENABLED and beta <= alpha:
+        if use_alpha_beta_pruning and beta <= alpha:
             break
 
     return best_score
 
-def minimax(board: list[str], depth: int, is_maximizing_player: bool) -> int:
+def minimax(board: list[str], depth: int, is_maximizing_player: bool, use_alpha_beta_pruning: bool) -> int:
     alpha = -float("inf") if is_maximizing_player else float("inf")
     beta = float("inf") if is_maximizing_player else -float("inf")
 
     assert alpha != beta, "alpha and beta should not be equal"
 
-    return minimax_alpha_beta(board, depth, is_maximizing_player, alpha, beta)
+    return minimax_aux(board, depth, is_maximizing_player, alpha, beta, use_alpha_beta_pruning)
 
 def clear_board(board: list[str], fill = CELL_EMPTY) -> None:
     """Clears the input board. Optionally with a different fill (default is empty cell)."""
@@ -184,8 +258,6 @@ def evaluate_board(board: list[str]) -> str:
 
 def play_computer_move(board: list[str]) -> None:
     """Runs the minimax algorithm to perform the computer's move."""
-    global debug_minimax_call_counter
-
     best_move_position = NOT_FOUND
     best_score = -float("inf")
     available_positions = get_available_positions(board)
@@ -194,8 +266,6 @@ def play_computer_move(board: list[str]) -> None:
     # move anywhere.
     if len(available_positions) == 0:
         return
-
-    start_time = time.time()
 
     for available_position in available_positions:
         board[available_position] = CELL_O
@@ -208,17 +278,6 @@ def play_computer_move(board: list[str]) -> None:
         if move_score > best_score:
             best_score = move_score
             best_move_position = available_position
-
-    if DEBUG_MEASURE_MINIMAX_PERFORMANCE:
-        end_time = time.time()
-        elapsed_time_ms = (end_time - start_time) * 1000
-
-        print_hint("Minimax call count: " + str(debug_minimax_call_counter))
-        print_hint("Minimax performance: " + str(elapsed_time_ms) + "ms")
-        print_hint("Alpha-beta pruning: " + str(DEBUG_ALPHA_BETA_PRUNING_ENABLED))
-        print_hint("<Press enter to continue>")
-        input()
-        debug_minimax_call_counter = 0
 
     assert best_move_position != NOT_FOUND, "a computer move should always be found when there are available positions"
     perform_move(board, best_move_position, CELL_O)
@@ -340,6 +399,11 @@ def next_round(board: list[str]) -> None:
 
 # Entry point; starts the game.
 if __name__ == "__main__":
+    # If benchmarking mode is enabled, run the benchmark and exit.
+    if IS_BENCHMARK_MODE:
+        benchmark_minimax_alpha_beta()
+        exit(0)
+
     # Create and populate a blank board.
     board = []
     clear_board(board)
