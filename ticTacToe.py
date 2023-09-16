@@ -25,7 +25,7 @@ BENCHMARK_ALLOWED_RUNNING_TIME_S: int = 10
 
 last_move_position: int = NOT_FOUND
 
-def benchmark_step(use_alpha_beta_pruning: bool) -> (int, int):
+def benchmark_step(use_alpha_beta_pruning: bool) -> tuple[float, int]:
     board = new_blank_board()
 
     board[0] = CELL_X
@@ -44,12 +44,12 @@ def benchmark_step(use_alpha_beta_pruning: bool) -> (int, int):
     return (elapsed_time_ms, total_call_count)
 
 def print_benchmark_results(
-    naive_step_reference_time_ms: int,
-    actual_benchmark_duration_s: int,
+    naive_step_reference_time_ms: float,
+    actual_benchmark_duration_s: float,
     iterations: int,
-    with_alpha_beta_step_time_sum: int,
+    with_alpha_beta_step_time_sum: float,
     with_alpha_beta_call_count: int,
-    without_alpha_beta_step_time_sum: int,
+    without_alpha_beta_step_time_sum: float,
     without_alpha_beta_call_count: int
 ) -> None:
     DECIMAL_PRECISION = 3
@@ -171,7 +171,7 @@ def rainbow(text: str) -> str:
 
 def get_available_positions(board: list[str]) -> list[int]:
     """Returns a list of available moves (positions) on the given board."""
-    available_positions = []
+    available_positions: list[int] = []
 
     for i in range(CELL_COUNT):
         if board[i] == CELL_EMPTY:
@@ -183,10 +183,10 @@ def minimax_aux(
     board: list[str],
     depth: int,
     is_maximizing_player_o: bool,
-    alpha: int,
-    beta: int,
+    alpha: float,
+    beta: float,
     use_alpha_beta_pruning: bool
-) -> (int, int):
+) -> tuple[float, int]:
     BIAS_SCORE = 10
 
     assert depth >= 0, "depth should be non-negative"
@@ -197,30 +197,29 @@ def minimax_aux(
     # Base case: if the game is over in this recursion branch
     # compute the score and return it.
     if depth == 0 or is_board_in_terminal_state:
-        encouragement = BIAS_SCORE + depth
-        penalty = -(BIAS_SCORE + depth)
+        if board_state == BOARD_STATE_TIE:
+            # Tie has no score.
+            return 0, 1
+
+        encouragement = BIAS_SCORE - depth
+        penalty = depth - BIAS_SCORE
 
         if board_state == BOARD_STATE_X_WINS:
             score = penalty if is_maximizing_player_o else encouragement
 
             return score, 1
-        elif board_state == BOARD_STATE_O_WINS:
+        # Otherwise, O won the game.
+        else:
             score = encouragement if is_maximizing_player_o else penalty
 
             return score, 1
-        else:
-            # Tie has no score.
-            return 0, 1
 
     comparator = max if is_maximizing_player_o else min
     best_score = -float("inf") if is_maximizing_player_o else float("inf")
     total_call_count = 0
 
     for available_position in get_available_positions(board):
-        # Save the value of the current position, so that it can be
-        # restored after the recursive call.
-        original_value = board[available_position]
-
+        assert board[available_position] == CELL_EMPTY, "available position should be empty"
         board[available_position] = CELL_O if is_maximizing_player_o else CELL_X
 
         score, call_count = minimax_aux(
@@ -234,7 +233,9 @@ def minimax_aux(
             use_alpha_beta_pruning
         )
 
-        board[available_position] = original_value
+        # Restore the board to its original state to prevent contamination.
+        board[available_position] = CELL_EMPTY
+
         best_score = comparator(best_score, score)
         total_call_count += call_count
 
@@ -244,6 +245,7 @@ def minimax_aux(
         else:
             beta = min(beta, best_score)
 
+        # TODO: Enable alpha-beta pruning after fixing the bug.
         # Apply alpha-beta pruning.
         # if use_alpha_beta_pruning and alpha >= beta:
         #     break
@@ -255,7 +257,7 @@ def minimax(
     depth: int,
     is_maximizing_player_o: bool,
     use_alpha_beta_pruning: bool
-) -> (int, int):
+) -> tuple[float, int]:
     alpha = -float("inf")
     beta = float("inf")
 
@@ -269,7 +271,7 @@ def minimax(
     )
 
 def new_blank_board() -> list[str]:
-    board = []
+    board: list[str] = []
 
     for _ in range(CELL_COUNT):
         board.append(CELL_EMPTY)
@@ -325,14 +327,15 @@ def evaluate_board(board: list[str]) -> str:
 
 def play_computer_move(board: list[str]) -> None:
     """Runs the minimax algorithm to perform the computer's move."""
-    best_move_position = NOT_FOUND
-    best_score = -float("inf")
     available_positions = get_available_positions(board)
 
     # If there are no available positions, the computer cannot make a
     # move anywhere.
     if len(available_positions) == 0:
         return
+
+    best_move_position = NOT_FOUND
+    best_score = -float("inf")
 
     for available_position in available_positions:
         board[available_position] = CELL_O
