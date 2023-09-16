@@ -22,7 +22,8 @@ BOARD_STATE_X_WINS: str = "X wins"
 BOARD_STATE_O_WINS: str = "O wins"
 TIME_FACTOR_MS: int = 1000
 IS_BENCHMARK_MODE: bool = "--benchmark" in sys.argv
-BENCHMARK_ALLOWED_RUNNING_TIME_S: int = 10
+BENCHMARK_ALLOWED_RUNNING_TIME_S: int = 30
+BENCHMARK_DECIMAL_PRECISION: int = 3
 
 last_move_position: int = NOT_FOUND
 
@@ -43,41 +44,45 @@ def benchmark_step(use_alpha_beta_pruning: bool) -> tuple[float, int]:
     return (elapsed_time_ms, total_call_count)
 
 def print_benchmark_results(
-    naive_step_reference_time_ms: float,
     actual_benchmark_duration_s: float,
     iterations: int,
     with_alpha_beta_step_time_sum: float,
     with_alpha_beta_call_count: int,
     without_alpha_beta_step_time_sum: float,
-    without_alpha_beta_call_count: int
+    without_alpha_beta_call_count: int,
+    estimated_benchmark_duration_s: float
 ) -> None:
-    DECIMAL_PRECISION = 3
-
     assert iterations > 0, "iterations should be at least 1"
 
-    with_alpha_beta_time_avg = round(with_alpha_beta_step_time_sum / iterations, DECIMAL_PRECISION)
-    without_alpha_beta_time_avg = round(without_alpha_beta_step_time_sum / iterations, DECIMAL_PRECISION)
-    improvement_percentage = round(abs(with_alpha_beta_call_count - without_alpha_beta_call_count) / without_alpha_beta_call_count * 100, DECIMAL_PRECISION)
-    improvement_factor = round(without_alpha_beta_call_count / with_alpha_beta_call_count, DECIMAL_PRECISION)
-    estimated_benchmark_duration_s = round(naive_step_reference_time_ms * iterations / TIME_FACTOR_MS, DECIMAL_PRECISION)
-    benchmark_duration_difference_percentage = round(abs(actual_benchmark_duration_s - estimated_benchmark_duration_s) / estimated_benchmark_duration_s * 100, DECIMAL_PRECISION)
+    with_alpha_beta_time_avg = round(with_alpha_beta_step_time_sum / iterations, BENCHMARK_DECIMAL_PRECISION)
+    without_alpha_beta_time_avg = round(without_alpha_beta_step_time_sum / iterations, BENCHMARK_DECIMAL_PRECISION)
+    improvement_percentage = round(abs(with_alpha_beta_call_count - without_alpha_beta_call_count) / without_alpha_beta_call_count * 100, BENCHMARK_DECIMAL_PRECISION)
+    improvement_factor = round(without_alpha_beta_call_count / with_alpha_beta_call_count, BENCHMARK_DECIMAL_PRECISION)
+    benchmark_duration_difference_percentage = round(abs(actual_benchmark_duration_s - estimated_benchmark_duration_s) / estimated_benchmark_duration_s * 100, BENCHMARK_DECIMAL_PRECISION)
 
-    print_hint("Step iterations: " + str(iterations))
-    print_hint("Call count [-alpha-beta pruning]: " + str(without_alpha_beta_call_count))
-    print_hint("Call count [+alpha-beta pruning]: " + str(with_alpha_beta_call_count))
-    print_hint("Avg. time per step [-alpha-beta pruning]: " + str(without_alpha_beta_time_avg) + "ms")
-    print_hint("Avg. time per step [+alpha-beta pruning]: " + str(with_alpha_beta_time_avg) + "ms")
-    print_hint("Improvement (%): " + str(improvement_percentage) + "%")
-    print_hint("Improvement factor: " + str(improvement_factor) + "x")
-    print_hint("Estimated benchmark running time: " + str(estimated_benchmark_duration_s) + "s")
-    print_hint("Actual benchmark running time: " + str(round(actual_benchmark_duration_s, DECIMAL_PRECISION)) + "s")
-    print_hint("Benchmark duration difference (%): " + str(benchmark_duration_difference_percentage) + "%")
+    print_hint("Actual benchmark running time: " + str(round(actual_benchmark_duration_s, BENCHMARK_DECIMAL_PRECISION)) + "s (" + str(benchmark_duration_difference_percentage) + "% diff)")
+    print_hint("Minimax call count [-alpha-beta pruning]: " + str(without_alpha_beta_call_count // iterations))
+    print_hint("Minimax call count [+alpha-beta pruning]: " + str(with_alpha_beta_call_count // iterations))
+    print_hint("Avg. time of minimax call [-alpha-beta pruning]: " + str(without_alpha_beta_time_avg) + "ms")
+    print_hint("Avg. time of minimax call [+alpha-beta pruning]: " + str(with_alpha_beta_time_avg) + "ms")
+    print_hint("Improvement (%): " + color(str(improvement_percentage), COLOR_GREEN) + color("%", COLOR_GRAY))
+    print_hint("Improvement factor: " + color(str(improvement_factor), COLOR_GREEN) + color("x", COLOR_GRAY))
 
-def perform_benchmark_for_depth(depth: int, case_name: str) -> None:
+def benchmark_minimax_alpha_beta() -> None:
+    assert BENCHMARK_ALLOWED_RUNNING_TIME_S > 0, "benchmark allowed running time should be at least 1s"
+
+    print_hint("Benchmark mode enabled")
+    print_hint("Allowed running time per benchmark case: " + str(BENCHMARK_ALLOWED_RUNNING_TIME_S) + "s")
+    print_hint("Establishing a reference time for a single step without alpha-beta pruning")
+
     naive_step_reference_time_ms, _ = benchmark_step(False)
     computed_iterations = math.ceil(BENCHMARK_ALLOWED_RUNNING_TIME_S * TIME_FACTOR_MS / naive_step_reference_time_ms)
+    estimated_benchmark_duration_s = round(naive_step_reference_time_ms * computed_iterations / TIME_FACTOR_MS, BENCHMARK_DECIMAL_PRECISION)
 
-    print("Running " + color(case_name, COLOR_YELLOW) + " benchmark (depth=" + str(depth) + ")")
+    assert computed_iterations > 0, "computed iterations should be at least 1"
+    print_hint("Using benchmark iterations: " + str(computed_iterations) + " time(s)")
+    print_hint("Estimated benchmark running time: " + str(estimated_benchmark_duration_s) + "s")
+    print("Running benchmark (" + color("depth=" + str(CELL_COUNT), COLOR_YELLOW) + ")")
 
     benchmark_start_time = time.time()
     with_alpha_beta_step_time_sum = 0
@@ -103,26 +108,14 @@ def perform_benchmark_for_depth(depth: int, case_name: str) -> None:
     actual_benchmark_duration_s = time.time() - benchmark_start_time
 
     print_benchmark_results(
-        naive_step_reference_time_ms,
         actual_benchmark_duration_s,
         computed_iterations,
         with_alpha_beta_step_time_sum,
         with_alpha_beta_call_count,
         without_alpha_beta_step_time_sum,
-        without_alpha_beta_call_count
+        without_alpha_beta_call_count,
+        estimated_benchmark_duration_s
     )
-
-def benchmark_minimax_alpha_beta() -> None:
-    WORST_CASE_DEPTH: int = 9
-    BEST_CASE_DEPTH: int = 1
-
-    average_case_depth = (WORST_CASE_DEPTH + BEST_CASE_DEPTH) // 2
-
-    print_hint("Benchmark mode enabled")
-    print_hint("Allowed running time per benchmark case: " + str(BENCHMARK_ALLOWED_RUNNING_TIME_S) + "s")
-    perform_benchmark_for_depth(WORST_CASE_DEPTH, "worst-case")
-    perform_benchmark_for_depth(BEST_CASE_DEPTH, "best-case")
-    perform_benchmark_for_depth(average_case_depth, "average-case")
 
 def assert_player_is_valid(player: str) -> None:
     VALID_PLAYERS = [CELL_X, CELL_O]
