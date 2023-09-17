@@ -9,6 +9,7 @@ function update(time) {
   for (const [index, particle] of particles.entries()) {
     const lifetime = time - particle.creationTime
 
+    // Destroy particle if it has exceeded its lifetime.
     if (lifetime > particle.lifetime) {
       particle.element.remove()
       particles.splice(index, 1)
@@ -20,6 +21,7 @@ function update(time) {
     const nextLeftPosition = particle.element.offsetLeft + deltaTime * particle.velocity.x
     const nextTopPosition = particle.element.offsetTop + deltaTime * particle.velocity.y
 
+    // Update particle position and opacity.
     particle.element.style.left = `${nextLeftPosition}px`
     particle.element.style.top = `${nextTopPosition}px`
     particle.element.style.opacity = 1 - lifetimePercentage

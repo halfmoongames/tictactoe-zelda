@@ -10,7 +10,10 @@ const Const = {
   NONE: -1,
   AUDIO_FEEDBACK: "feedback",
   AUDIO_THEME_MUSIC: "background-music",
+  AUDIO_NAVI_LISTEN: "navi-listen",
   AUDIO_KOROK_APPEARS: "korok-appears",
+  AUDIO_GOT_ITEM: "got-item",
+  AUDIO_CHEST: "chest",
   COVER_QUERY_SELECTOR: "#cover",
   WRAPPER_QUERY_SELECTOR: ".wrapper",
   COVER_LABEL_QUERY_SELECTOR: "#cover > label",
@@ -22,7 +25,7 @@ const Const = {
 const config = {
   sessionId: null,
   roundEndTimeout: 4000,
-  roundEndScreenShowDelay: 1500,
+  roundEndScreenShowDelay: 1000,
   themeMusicDelay: 2000,
   coverLabelFadeTime: 1000,
   coverFadeTime: 3000,
@@ -139,6 +142,15 @@ function handleCellClickEvent($cell) {
 
       setTimeout(() => {
         $messageCover.classList.add(Const.COVER_SHOW_CLASS)
+
+        const audioEffectName = response.boardState === Const.BOARD_STATE_TIE
+          ? Const.AUDIO_NAVI_LISTEN
+          : response.boardState === Const.BOARD_STATE_X_WINS
+            ? Const.AUDIO_GOT_ITEM
+            : Const.AUDIO_CHEST
+
+        playAudio(audioEffectName)
+
         setTimeout(() => resetGame(), config.roundEndTimeout)
       }, config.roundEndScreenShowDelay)
     }
