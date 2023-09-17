@@ -56,6 +56,7 @@
   --color-tree-green: #344a22;
   --color-bright-green: #b6e88d;
   --color-grass-green: #03201c;
+  --color-border: #072e32;
 }
 
 * {
@@ -223,7 +224,8 @@ body {
   color: var(--color-bright-green);
   box-shadow: 0 0 15px rgba(0, 0, 0, 0.9);
   background: rgba(52, 74, 34, 0.5);
-  border: 5px solid rgba(52, 74, 34, 0.5);
+  border: 3px solid var(--color-border);
+  border-bottom-width: 6px;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   text-shadow: 5px 5px 15px var(--color-grass-green);
 }
