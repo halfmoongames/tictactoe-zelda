@@ -1,16 +1,14 @@
-from flask import Flask
-from flask import request
-from flask import render_template
 import os
 import tic_tac_toe
 import aux
 import logging
+import flask
 
-app = Flask(__name__)
+app = flask.Flask(__name__)
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return flask.render_template("index.html")
 
 @app.route("/session/create", methods=["POST"])
 def createSession():
@@ -27,10 +25,10 @@ def gameGateway():
     POSITION_PROP_KEY = "position"
     SESSION_ID_PROP_KEY = "sessionId"
 
-    if not request.is_json:
+    if not flask.request.is_json:
         return aux.create_fail_play_response("Invalid request body format (expected JSON)")
 
-    data = request.get_json()
+    data = flask.request.get_json()
     required_properties = [SESSION_ID_PROP_KEY, POSITION_PROP_KEY]
 
     for required_property_key in required_properties:
