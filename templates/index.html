@@ -4,14 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TicTacToe</title>
-    <link rel="stylesheet" href="/static/style.css" />
-    <script type="text/javascript" src="/static/vanilla-tilt.js"></script>
-    <script type="text/javascript" src="/static/particles.js"></script>
-    <script src="/static/script.js"></script>
-    <script src="/static/effects.js"></script>
+    <link rel="stylesheet" href="/assets/css/style.css" />
+    <script type="text/javascript" src="/assets/js/vanilla-tilt.js"></script>
+    <script type="text/javascript" src="/assets/js/particles.js"></script>
+    <script src="/assets/js/script.js"></script>
+    <script src="/assets/js/effects.js"></script>
+    <script src="/assets/js/three.js"></script>
   </head>
   <body>
-    <div id="message-cover">Testing something here and there</div>
+    <!-- <div id="scene">
+      <div data-depth="0.2">Content 1</div>
+      <div data-depth="0.6">Content 2</div>
+    </div> -->
+    <div id="message-cover">This text should be modified by JavaScript</div>
     <div id="particles"></div>
     <div id="cover">
       <label class="guide">click anywhere to begin</label>
@@ -19,15 +24,33 @@
     <div class="wrapper">
       <h1 class="title">TicTacToe</h1>
       <div id="board" class="container">
-        <button class="cell" data-position="1"></button>
-        <button class="cell" data-position="2"></button>
-        <button class="cell" data-position="3"></button>
-        <button class="cell" data-position="4"></button>
-        <button class="cell" data-position="5"></button>
-        <button class="cell" data-position="6"></button>
-        <button class="cell" data-position="7"></button>
-        <button class="cell" data-position="8"></button>
-        <button class="cell" data-position="9"></button>
+        <div class="cell-wrapper">
+          <button class="cell" data-position="1"></button>
+        </div>
+        <div class="cell-wrapper">
+          <button class="cell" data-position="2"></button>
+        </div>
+        <div class="cell-wrapper">
+          <button class="cell" data-position="3"></button>
+        </div>
+        <div class="cell-wrapper">
+          <button class="cell" data-position="4"></button>
+        </div>
+        <div class="cell-wrapper">
+          <button class="cell" data-position="5"></button>
+        </div>
+        <div class="cell-wrapper">
+          <button class="cell" data-position="6"></button>
+        </div>
+        <div class="cell-wrapper">
+          <button class="cell" data-position="7"></button>
+        </div>
+        <div class="cell-wrapper">
+          <button class="cell" data-position="8"></button>
+        </div>
+        <div class="cell-wrapper">
+          <button class="cell" data-position="9"></button>
+        </div>
       </div>
     </div>
   </body>

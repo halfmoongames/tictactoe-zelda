@@ -14,7 +14,8 @@ const Const = {
   COVER_QUERY_SELECTOR: "#cover",
   WRAPPER_QUERY_SELECTOR: ".wrapper",
   COVER_LABEL_QUERY_SELECTOR: "#cover > label",
-  MESSAGE_COVER_SELECTOR: "#message-cover"
+  MESSAGE_COVER_SELECTOR: "#message-cover",
+  CELL_WRAPPER_QUERY_SELECTOR: ".cell-wrapper"
 }
 
 const config = {
@@ -52,7 +53,7 @@ function assert(condition, reasoning) {
 function $getCellForPosition(position) {
   assertPositionIsValid(position)
 
-  return document.querySelector(`#board > button[data-position="${position}"]`)
+  return document.querySelector(`button[data-position="${position}"].cell`)
 }
 
 async function makePlayRequest(position) {
@@ -72,6 +73,11 @@ async function makePlayRequest(position) {
 }
 
 function attachCellClickEvent($cell) {
+  // Trigger animation on the parent wrapper.
+  const $wrapper = $cell.parentElement
+
+  $wrapper.classList.add("click")
+
   const position = parseInt($cell.dataset.position)
 
   assert(position >= 1 && position <= 9, "Cell position should be in the range of 1-9")
@@ -115,6 +121,11 @@ function attachEventListeners() {
     $cell.addEventListener("click", () => attachCellClickEvent($cell))
   }
 
+  const $cellWrappers = document.querySelectorAll(Const.CELL_WRAPPER_QUERY_SELECTOR)
+
+  for (const $cellWrapper of $cellWrappers)
+    $cellWrapper.addEventListener("animationend", () => $cellWrapper.classList.remove("click"))
+
   console.log("Attached event listeners to board cells")
 }
 
@@ -134,7 +145,7 @@ async function fetchNewSessionId() {
 
 function playAudio(name) {
   if (state.audioCache[name] === undefined)
-    state.audioCache[name] = new Audio(`/static/audio/${name}.mp3`)
+    state.audioCache[name] = new Audio(`/assets/audio/${name}.mp3`)
 
   let audio = state.audioCache[name]
 

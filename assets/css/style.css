@@ -1,6 +1,18 @@
 @font-face {
   font-family: "Wild Breath of Zelda";
-  src: url("./wild-breath.ttf");
+  src: url("../font/wild-breath.ttf");
+}
+
+@keyframes click {
+  from {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(0.7);
+    filter: blur(5px);
+    opacity: 0.7;
+  }
 }
 
 @keyframes shift-in {
@@ -51,7 +63,7 @@
   margin: 0;
   box-sizing: border-box;
   font-family: "Wild Breath of Zelda", sans-serif;
-  cursor: url("./master-sword.cur"), auto;
+  cursor: url("../img/master-sword.cur"), auto;
 }
 
 html,
@@ -68,7 +80,7 @@ html {
 
 body {
   height: 100vh;
-  background-image: url("./background.jpg");
+  background-image: url("../img/background.jpg");
   background-size: cover;
   background-repeat: no-repeat;
   color: var(--color-white);
@@ -179,6 +191,11 @@ audio {
   gap: 2vmin;
 }
 
+.cell-wrapper.click {
+  transition: transform 0.2s ease, opacity 0.2s ease, filter 0.2s ease;
+  animation: click 0.2s ease;
+}
+
 .cell {
   height: 22vmin;
   width: 22vmin;
@@ -200,4 +217,21 @@ audio {
 .cell:hover {
   opacity: 0.9;
   box-shadow: 0 0 30px #000;
+}
+
+.particle {
+  position: absolute;
+  z-index: 2;
+  background-color: var(--color-bright-green);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+#scene {
+  perspective: 1000px;
+}
+
+[data-depth] {
+  position: absolute;
 }
