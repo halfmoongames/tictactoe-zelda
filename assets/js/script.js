@@ -15,19 +15,23 @@ const Const = {
   WRAPPER_QUERY_SELECTOR: ".wrapper",
   COVER_LABEL_QUERY_SELECTOR: "#cover > label",
   MESSAGE_COVER_SELECTOR: "#message-cover",
-  CELL_WRAPPER_QUERY_SELECTOR: ".cell-wrapper"
+  CELL_WRAPPER_QUERY_SELECTOR: ".cell-wrapper",
+  COVER_SHOW_CLASS: "show"
 }
 
 const config = {
   sessionId: null,
-  reloadAfterGameEndsTimeout: 5000,
+  roundEndTimeout: 4000,
+  roundEndScreenShowDelay: 1500,
   themeMusicDelay: 2000,
   coverLabelFadeTime: 1000,
-  coverFadeTime: 3000
+  coverFadeTime: 3000,
+  simulatedComputerMoveDelay: 1000,
 }
 
 const state = {
-  audioCache: {}
+  audioCache: {},
+  isUserInteractionDisabled: false
 }
 
 function performMove(position, player) {
@@ -36,6 +40,10 @@ function performMove(position, player) {
 
   const $cell = $getCellForPosition(position)
 
+  // Trigger animation on the parent wrapper.
+  const $wrapper = $cell.parentElement
+
+  $wrapper.classList.add("click")
   $cell.innerText = player
   $cell.disabled = true
   playAudio(Const.AUDIO_FEEDBACK)
@@ -72,11 +80,28 @@ async function makePlayRequest(position) {
   return response.json()
 }
 
-function attachCellClickEvent($cell) {
-  // Trigger animation on the parent wrapper.
-  const $wrapper = $cell.parentElement
+async function resetGame() {
+  const newSessionId = await fetchNewSessionId()
 
-  $wrapper.classList.add("click")
+  config.sessionId = newSessionId
+
+  document.querySelector(Const.MESSAGE_COVER_SELECTOR)
+    .classList
+    .remove(Const.COVER_SHOW_CLASS)
+
+  document.querySelectorAll(Const.CELL_QUERY_SELECTOR).forEach($cell => {
+    $cell.innerText = Const.CELL_EMPTY
+    $cell.disabled = false
+  })
+
+  state.isUserInteractionDisabled = false
+}
+
+function handleCellClickEvent($cell) {
+  if (state.isUserInteractionDisabled)
+    return
+
+  state.isUserInteractionDisabled = true
 
   const position = parseInt($cell.dataset.position)
 
@@ -90,14 +115,20 @@ function attachCellClickEvent($cell) {
     // If there was an error, display it to the user.
     if (response.error) {
       alert(response.error)
-      performMove(position, Const.CELL_EMPTY)
+      window.location.reload()
 
       return
     }
 
-    // Otherwise, update the board with both the player's and computer's moves.
+    // Otherwise, update the board with the computer's move.
     if (response.computerMovePosition != Const.NONE)
-      performMove(response.computerMovePosition, Const.CELL_O)
+      setTimeout(() => {
+        performMove(response.computerMovePosition, Const.CELL_O)
+
+
+        if (response.boardState === Const.BOARD_STATE_OPEN)
+          state.isUserInteractionDisabled = false
+      }, config.simulatedComputerMoveDelay)
 
     // If the game ended, display the result to the user, and reload the page.
     if (response.boardState !== Const.BOARD_STATE_OPEN) {
@@ -105,8 +136,11 @@ function attachCellClickEvent($cell) {
 
       $messageCover.innerText = response.boardState
       document.querySelectorAll(Const.CELL_QUERY_SELECTOR).forEach($cell => $cell.disabled = true)
-      $messageCover.classList.add("show")
-      setTimeout(() => location.reload(), config.reloadAfterGameEndsTimeout)
+
+      setTimeout(() => {
+        $messageCover.classList.add(Const.COVER_SHOW_CLASS)
+        setTimeout(() => resetGame(), config.roundEndTimeout)
+      }, config.roundEndScreenShowDelay)
     }
   })
 }
@@ -118,7 +152,7 @@ function attachEventListeners() {
 
   for (const $cell of $cells) {
     assert($cell.innerText == "", "Each cell should initially be empty")
-    $cell.addEventListener("click", () => attachCellClickEvent($cell))
+    $cell.addEventListener("click", () => handleCellClickEvent($cell))
   }
 
   const $cellWrappers = document.querySelectorAll(Const.CELL_WRAPPER_QUERY_SELECTOR)
@@ -148,6 +182,11 @@ function playAudio(name) {
     state.audioCache[name] = new Audio(`/assets/audio/${name}.mp3`)
 
   const audio = state.audioCache[name]
+
+  // Reset the audio to the beginning, and play it.
+  // This is so that the audio can be played multiple times in a row,
+  // just in case that the audio is played at rapid succession.
+  audio.currentTime = 0
 
   audio.play()
 
