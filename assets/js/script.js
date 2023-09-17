@@ -84,10 +84,6 @@ async function makePlayRequest(position) {
 }
 
 async function resetGame() {
-  const newSessionId = await fetchNewSessionId()
-
-  config.sessionId = newSessionId
-
   document.querySelector(Const.MESSAGE_COVER_SELECTOR)
     .classList
     .remove(Const.COVER_SHOW_CLASS)

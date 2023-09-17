@@ -12,9 +12,9 @@ def index():
 
 @app.route("/session/create", methods=["POST"])
 def createSession():
-    id = aux.create_session_id()
+    id = aux.next_session_id()
 
-    assert id not in aux.sessions, "Session ID should not already exist (collision?)"
+    assert id not in aux.sessions, "New session id should always be unique"
     aux.create_session(id)
     aux.log_session(id, "Created session")
 

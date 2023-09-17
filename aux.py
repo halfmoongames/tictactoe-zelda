@@ -11,10 +11,8 @@ COLOR_YELLOW: str = "33"
 
 sessions: dict[str, list[str]] = {}
 
-def create_session_id() -> str:
-    SESSION_ID_GENERATION_SIZE = 3
-
-    return os.urandom(SESSION_ID_GENERATION_SIZE).hex()
+def next_session_id() -> str:
+    return hex(len(sessions))
 
 def create_session(id: str) -> Optional[list[str]]:
     if id in sessions:
