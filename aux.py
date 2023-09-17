@@ -2,11 +2,51 @@ import os
 import sys
 import tic_tac_toe
 import flask
+from typing import Optional
 
 COLOR_RED: str = "31"
 COLOR_GREEN: str = "32"
 COLOR_GRAY: str = "90"
 COLOR_YELLOW: str = "33"
+
+sessions: dict[str, list[str]] = {}
+
+def create_session_id() -> str:
+    SESSION_ID_GENERATION_SIZE = 3
+
+    return os.urandom(SESSION_ID_GENERATION_SIZE).hex()
+
+def create_session(id: str) -> Optional[list[str]]:
+    if id in sessions:
+        return None
+
+    board = tic_tac_toe.create_blank_board()
+
+    sessions[id] = board
+
+    return board
+
+def reset_session(id: str) -> bool:
+    if id not in sessions:
+        return False
+
+    sessions[id] = tic_tac_toe.create_blank_board()
+
+    return True
+
+def destroy_session(id: str) -> bool:
+    if id not in sessions:
+        return False
+
+    del sessions[id]
+
+    return True
+
+def create_session_response(id: str) -> flask.Response:
+    return flask.jsonify({
+        "id": id,
+        "error": ""
+    })
 
 def create_play_response(computer_move_position: int | None, board_state: str) -> flask.Response:
     return flask.jsonify({
@@ -22,8 +62,11 @@ def create_fail_play_response(message: str) -> flask.Response:
         "error": message,
     })
 
-def print_hint(text: str) -> None:
+def log(text: str) -> None:
     print(color(text, COLOR_GRAY))
+
+def log_session(session_id: str, text: str) -> None:
+    print(color("[", COLOR_GRAY) + color(session_id, COLOR_YELLOW) + color("]", COLOR_GRAY), color(text, COLOR_GRAY))
 
 def color(text: str, color: str) -> str:
     """Returns the input text with the input color."""

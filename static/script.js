@@ -4,15 +4,13 @@ const Const = {
   BOARD_STATE_TIE: "Tie",
   BOARD_STATE_OPEN: "Open",
   CELL_X: "X",
-  CELL_O: "O"
+  CELL_O: "O",
+  CELL_QUERY_SELECTOR: "#board > button[data-position]"
 }
 
 const config = {
-  sessionId: createNewSessionId()
-}
-
-function createNewSessionId() {
-  return Math.random().toString(36).substring(2, 15)
+  sessionId: null,
+  reloadAfterGameEndsTimeoutMs: 2000
 }
 
 function setCell(position, value) {
@@ -44,7 +42,10 @@ async function makePlayRequest(position) {
   const response = await fetch("/play", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({position})
+    body: JSON.stringify({
+      sessionId: config.sessionId,
+      position
+    })
   })
 
   if (!response.ok)
@@ -71,19 +72,20 @@ function attachCellClickEvent($cell) {
 
     // Otherwise, update the board with both the player's and computer's moves.
     setCell(position, Const.CELL_X)
+    setCell(response.computerMovePosition, Const.CELL_O)
 
     // If the game ended, display the result to the user, and reload the page.
-    if (response.boardState !== Const.BOARD_STATE_OPEN)
-      setCell(response.computerMovePosition, Const.CELL_O)
+    if (response.boardState !== Const.BOARD_STATE_OPEN) {
       alert(response.boardState)
+
+      document.querySelectorAll(Const.CELL_QUERY_SELECTOR).forEach($cell => $cell.disabled = true)
+      setTimeout(() => location.reload(), config.reloadAfterGameEndsTimeoutMs)
+    }
   })
 }
 
-window.addEventListener("load", () => {
-  console.log("Script loaded")
-  console.log("Using session id", config.sessionId)
-
-  const $cells = document.querySelectorAll("#board > button[data-position]")
+function attachEventListeners() {
+  const $cells = document.querySelectorAll(Const.CELL_QUERY_SELECTOR)
 
   assert($cells.length == 9, "There should be 9 board buttons")
 
@@ -93,4 +95,30 @@ window.addEventListener("load", () => {
   }
 
   console.log("Attached event listeners to board cells")
+}
+
+async function fetchNewSessionId() {
+  const response = await fetch("/session/create", {method: "POST"})
+
+  if (!response.ok)
+    throw new Error("Failed to fetch new session id", response.status, response.statusText)
+
+  const json = await response.json()
+
+  if (!json.id)
+    throw new Error("Failed to fetch new session id", "Response did not contain a session id")
+
+  return json.id
+}
+
+window.addEventListener("load", () => {
+  console.log("Script loaded")
+  console.log("Fetching new session id")
+
+  fetchNewSessionId()
+    .then(sessionId => {
+      console.log("Received new session id", sessionId)
+      config.sessionId = sessionId
+    })
+    .then(() => attachEventListeners())
 })
