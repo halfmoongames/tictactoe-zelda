@@ -191,6 +191,10 @@ body {
 .wrapper {
   opacity: 0;
   transform-origin: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 .wrapper.animate {
