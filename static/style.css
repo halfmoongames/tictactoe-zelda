@@ -58,6 +58,8 @@ html,
 body {
   margin: 0;
   padding: 0;
+  /* BUG: There seems to be some extra space at the bottom of the page. This is a temporary fix. */
+  overflow: hidden;
 }
 
 html {
