@@ -147,7 +147,7 @@ function playAudio(name) {
   if (state.audioCache[name] === undefined)
     state.audioCache[name] = new Audio(`/assets/audio/${name}.mp3`)
 
-  let audio = state.audioCache[name]
+  const audio = state.audioCache[name]
 
   audio.play()
 

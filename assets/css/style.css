@@ -164,9 +164,28 @@ body {
   animation-fill-mode: forwards;
 }
 
-.title {
-  text-shadow: 10px 5px green;
+.title-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  text-align: center;
+}
+
+.title-wrapper > .title {
+  margin: 0;
+  margin-top: 1rem;
+  text-shadow: 0 0 10px var(--color-bright-green);
   user-select: none;
+  font-size: 2.5rem;
+}
+
+.title-wrapper > .subtitle {
+  font-size: 0.5rem;
+  letter-spacing: 1px;
+  max-width: 550px;
+  opacity: 0.75;
+  text-shadow: 0 0 10px var(--color-bright-green);
 }
 
 .wrapper {
