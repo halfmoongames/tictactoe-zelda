@@ -61,7 +61,12 @@ def minimax_aux(
         is_positive_outcome = (player == winner and is_maximizing) or (player != winner and not is_maximizing)
         multiplier = 1 if is_positive_outcome else -1
 
-        return multiplier * BIAS_SCORE, 1
+        # Penalize deeper depth if maximizing, or reward deeper depth if minimizing.
+        # This will encourage the algorithm to win/lose (depending on whether maximizing
+        # or not) as quickly as possible.
+        depth_score = -depth if is_maximizing else depth
+
+        return multiplier * BIAS_SCORE + depth_score, 1
 
     comparator = max if is_maximizing else min
     best_score = -float("inf") if is_maximizing else float("inf")

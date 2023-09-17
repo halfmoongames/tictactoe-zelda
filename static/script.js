@@ -5,7 +5,9 @@ const Const = {
   BOARD_STATE_OPEN: "Open",
   CELL_X: "X",
   CELL_O: "O",
-  CELL_QUERY_SELECTOR: "#board > button[data-position]"
+  CELL_EMPTY: "",
+  CELL_QUERY_SELECTOR: "#board > button[data-position]",
+  NONE: -1
 }
 
 const config = {
@@ -59,6 +61,7 @@ function attachCellClickEvent($cell) {
 
   assert(position >= 1 && position <= 9, "Cell position should be in the range of 1-9")
   console.log("Sent play request for position", position)
+  setCell(position, Const.CELL_X)
 
   makePlayRequest(position).then(response => {
     console.log("Received play response", response)
@@ -66,20 +69,23 @@ function attachCellClickEvent($cell) {
     // If there was an error, display it to the user.
     if (response.error) {
       alert(response.error)
+      setCell(position, Const.CELL_EMPTY)
 
       return
     }
 
     // Otherwise, update the board with both the player's and computer's moves.
-    setCell(position, Const.CELL_X)
-    setCell(response.computerMovePosition, Const.CELL_O)
+    if (response.computerMovePosition != Const.NONE)
+      setCell(response.computerMovePosition, Const.CELL_O)
 
     // If the game ended, display the result to the user, and reload the page.
     if (response.boardState !== Const.BOARD_STATE_OPEN) {
-      alert(response.boardState)
-
       document.querySelectorAll(Const.CELL_QUERY_SELECTOR).forEach($cell => $cell.disabled = true)
-      setTimeout(() => location.reload(), config.reloadAfterGameEndsTimeoutMs)
+
+      setTimeout(() => {
+        alert(response.boardState)
+        location.reload()
+      }, config.reloadAfterGameEndsTimeoutMs)
     }
   })
 }
