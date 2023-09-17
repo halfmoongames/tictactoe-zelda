@@ -6,7 +6,7 @@ import tic_tac_toe
 import aux
 import logging
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="static")
 
 @app.route("/")
 def index():

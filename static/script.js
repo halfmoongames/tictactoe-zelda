@@ -6,23 +6,38 @@ const Const = {
   CELL_X: "X",
   CELL_O: "O",
   CELL_EMPTY: "",
-  CELL_QUERY_SELECTOR: "#board > button[data-position]",
-  NONE: -1
+  CELL_QUERY_SELECTOR: ".cell",
+  NONE: -1,
+  AUDIO_FEEDBACK: "feedback",
+  AUDIO_THEME_MUSIC: "background-music",
+  AUDIO_KOROK_APPEARS: "korok-appears",
+  COVER_QUERY_SELECTOR: "#cover",
+  WRAPPER_QUERY_SELECTOR: ".wrapper",
+  COVER_LABEL_QUERY_SELECTOR: "#cover > label",
+  MESSAGE_COVER_SELECTOR: "#message-cover"
 }
 
 const config = {
   sessionId: null,
-  reloadAfterGameEndsTimeoutMs: 2000
+  reloadAfterGameEndsTimeout: 5000,
+  themeMusicDelay: 2000,
+  coverLabelFadeTime: 1000,
+  coverFadeTime: 3000
 }
 
-function setCell(position, value) {
-  assert(value == Const.CELL_X || value == Const.CELL_O, "Value should be X or O")
+const state = {
+  audioCache: {}
+}
+
+function performMove(position, player) {
+  assert(player == Const.CELL_X || player == Const.CELL_O, "Value should be X or O")
   assertPositionIsValid(position)
 
   const $cell = $getCellForPosition(position)
 
-  $cell.innerText = value
+  $cell.innerText = player
   $cell.disabled = true
+  playAudio(Const.AUDIO_FEEDBACK)
 }
 
 function assertPositionIsValid(position) {
@@ -61,7 +76,7 @@ function attachCellClickEvent($cell) {
 
   assert(position >= 1 && position <= 9, "Cell position should be in the range of 1-9")
   console.log("Sent play request for position", position)
-  setCell(position, Const.CELL_X)
+  performMove(position, Const.CELL_X)
 
   makePlayRequest(position).then(response => {
     console.log("Received play response", response)
@@ -69,23 +84,23 @@ function attachCellClickEvent($cell) {
     // If there was an error, display it to the user.
     if (response.error) {
       alert(response.error)
-      setCell(position, Const.CELL_EMPTY)
+      performMove(position, Const.CELL_EMPTY)
 
       return
     }
 
     // Otherwise, update the board with both the player's and computer's moves.
     if (response.computerMovePosition != Const.NONE)
-      setCell(response.computerMovePosition, Const.CELL_O)
+      performMove(response.computerMovePosition, Const.CELL_O)
 
     // If the game ended, display the result to the user, and reload the page.
     if (response.boardState !== Const.BOARD_STATE_OPEN) {
-      document.querySelectorAll(Const.CELL_QUERY_SELECTOR).forEach($cell => $cell.disabled = true)
+      const $messageCover = document.querySelector(Const.MESSAGE_COVER_SELECTOR)
 
-      setTimeout(() => {
-        alert(response.boardState)
-        location.reload()
-      }, config.reloadAfterGameEndsTimeoutMs)
+      $messageCover.innerText = response.boardState
+      document.querySelectorAll(Const.CELL_QUERY_SELECTOR).forEach($cell => $cell.disabled = true)
+      $messageCover.classList.add("show")
+      setTimeout(() => location.reload(), config.reloadAfterGameEndsTimeout)
     }
   })
 }
@@ -117,8 +132,18 @@ async function fetchNewSessionId() {
   return json.id
 }
 
-window.addEventListener("load", () => {
-  console.log("Script loaded")
+function playAudio(name) {
+  if (state.audioCache[name] === undefined)
+    state.audioCache[name] = new Audio(`/static/audio/${name}.mp3`)
+
+  let audio = state.audioCache[name]
+
+  audio.play()
+
+  return audio
+}
+
+function initialize() {
   console.log("Fetching new session id")
 
   fetchNewSessionId()
@@ -127,4 +152,42 @@ window.addEventListener("load", () => {
       config.sessionId = sessionId
     })
     .then(() => attachEventListeners())
-})
+
+  // Initialize Vanilla tilt for the 3D effect on the board.
+  VanillaTilt.init(document.querySelectorAll(Const.CELL_QUERY_SELECTOR), {
+    max: 25,
+    speed: 400
+  })
+
+  setTimeout(() => {
+    const themeMusicAudio = playAudio(Const.AUDIO_THEME_MUSIC)
+
+    // Loop the theme music.
+    themeMusicAudio.loop = true
+  }, 1000)
+}
+
+function handleFirstUserInteraction() {
+  window.removeEventListener("click", handleFirstUserInteraction)
+  playAudio(Const.AUDIO_KOROK_APPEARS)
+  console.log("Received user interaction; initializing game")
+
+  const $coverLabel = document.querySelector(Const.COVER_LABEL_QUERY_SELECTOR)
+
+  $coverLabel.classList.add("fade")
+
+  // Fade out the cover after the label has faded out.
+  setTimeout(() => {
+    document.querySelector(Const.COVER_QUERY_SELECTOR).classList.add("fade")
+  }, config.coverLabelFadeTime)
+
+  // Fade in the board after the cover has faded out.
+  setTimeout(() => {
+    document.querySelector(Const.WRAPPER_QUERY_SELECTOR).classList.add("animate")
+  }, config.coverLabelFadeTime + config.coverFadeTime)
+
+  initialize()
+}
+
+window.addEventListener("load", () => console.log("Script loaded; awaiting user interaction"))
+window.addEventListener("click", handleFirstUserInteraction)
