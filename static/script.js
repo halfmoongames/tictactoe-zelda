@@ -1,89 +1,96 @@
-let btnRef = document.querySelectorAll(".button-option");
-let popupRef = document.querySelector(".popup");
-let newgameBtn = document.getElementById("new-game");
-let restartBtn = document.getElementById("restart");
-let msgRef = document.getElementById("message");
-let winningPattern = [
-  [0, 1, 2],
-  [0, 3, 6],
-  [2, 5, 8],
-  [6, 7, 8],
-  [3, 4, 5],
-  [1, 4, 7],
-  [0, 4, 8],
-  [2, 4, 6],
-];
-let xTurn = true;
-let count = 0;
+const Const = {
+  BOARD_STATE_X_WINS: "X wins",
+  BOARD_STATE_O_WINS: "O wins",
+  BOARD_STATE_TIE: "Tie",
+  BOARD_STATE_OPEN: "Open",
+  CELL_X: "X",
+  CELL_O: "O"
+}
 
-const disableButtons = () => {
-  btnRef.forEach((element) => (element.disabled = true));
-  //enable popup
-  popupRef.classList.remove("hide");
-};
+const config = {
+  sessionId: createNewSessionId()
+}
 
-const enableButtons = () => {
-  btnRef.forEach((element) => {
-    element.innerText = "";
-    element.disabled = false;
-  });
-  popupRef.classList.add("hide");
-};
+function createNewSessionId() {
+  return Math.random().toString(36).substring(2, 15)
+}
 
-const winFunction = (letter) => {
-  disableButtons();
-  if (letter == "X") {
-    msgRef.innerHTML = "&#x1F389; <br> 'X' Wins";
-  } else {
-    msgRef.innerHTML = "&#x1F389; <br> 'O' Wins";
+function setCell(position, value) {
+  assert(value == Const.CELL_X || value == Const.CELL_O, "Value should be X or O")
+  assertPositionIsValid(position)
+
+  const $cell = $getCellForPosition(position)
+
+  $cell.innerText = value
+  $cell.disabled = true
+}
+
+function assertPositionIsValid(position) {
+  assert(position >= 1 && position <= 9, "Position should be in the range of 1-9")
+}
+
+function assert(condition, reasoning) {
+  if (!condition)
+    throw new Error("Assertion failed: " + reasoning)
+}
+
+function $getCellForPosition(position) {
+  assertPositionIsValid(position)
+
+  return document.querySelector(`#board > button[data-position="${position}"]`)
+}
+
+async function makePlayRequest(position) {
+  const response = await fetch("/play", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({position})
+  })
+
+  if (!response.ok)
+    throw new Error("Failed to make play request", response.status, response.statusText)
+
+  return response.json()
+}
+
+function attachCellClickEvent($cell) {
+  const position = parseInt($cell.dataset.position)
+
+  assert(position >= 1 && position <= 9, "Cell position should be in the range of 1-9")
+  console.log("Sent play request for position", position)
+
+  makePlayRequest(position).then(response => {
+    console.log("Received play response", response)
+
+    // If there was an error, display it to the user.
+    if (response.error) {
+      alert(response.error)
+
+      return
+    }
+
+    // Otherwise, update the board with both the player's and computer's moves.
+    setCell(position, Const.CELL_X)
+
+    // If the game ended, display the result to the user, and reload the page.
+    if (response.boardState !== Const.BOARD_STATE_OPEN)
+      setCell(response.computerMovePosition, Const.CELL_O)
+      alert(response.boardState)
+  })
+}
+
+window.addEventListener("load", () => {
+  console.log("Script loaded")
+  console.log("Using session id", config.sessionId)
+
+  const $cells = document.querySelectorAll("#board > button[data-position]")
+
+  assert($cells.length == 9, "There should be 9 board buttons")
+
+  for (const $cell of $cells) {
+    assert($cell.innerText == "", "Each cell should initially be empty")
+    $cell.addEventListener("click", () => attachCellClickEvent($cell))
   }
-};
 
-const drawFunction = () => {
-  disableButtons();
-  msgRef.innerHTML = "&#x1F60E; <br> It's a Draw";
-};
-
-newgameBtn.addEventListener("click", () => {
-  count = 0;
-  enableButtons();
-});
-restartBtn.addEventListener("click", () => {
-  count = 0;
-  enableButtons();
-});
-
-const winChecker = () => {
-  for (let i of winningPattern) {
-    let [element1, element2, element3] = [
-      btnRef[i[0]].innerText,
-      btnRef[i[1]].innerText,
-      btnRef[i[2]].innerText,
-    ];
-    if (element1 != "" && (element2 != "") & (element3 != "")) {
-      if (element1 == element2 && element2 == element3) {
-        winFunction(element1);
-      }
-    }
-  }
-};
-
-btnRef.forEach((element) => {
-  element.addEventListener("click", () => {
-    if (xTurn) {
-      xTurn = false;
-      element.innerText = "X";
-      element.disabled = true;
-    } else {
-      xTurn = true;
-      element.innerText = "O";
-      element.disabled = true;
-    }
-    count += 1;
-    if (count == 9) {
-      drawFunction();
-    }
-    winChecker();
-  });
-});
-window.onload = enableButtons;
+  console.log("Attached event listeners to board cells")
+})

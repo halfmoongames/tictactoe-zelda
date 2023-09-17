@@ -1,11 +1,26 @@
 import os
 import sys
 import tic_tac_toe
+import flask
 
 COLOR_RED: str = "31"
 COLOR_GREEN: str = "32"
 COLOR_GRAY: str = "90"
 COLOR_YELLOW: str = "33"
+
+def create_play_response(computer_move_position: int | None, board_state: str) -> flask.Response:
+    return flask.jsonify({
+        "computerMovePosition": -1 if computer_move_position is None else computer_move_position + 1,
+        "boardState": board_state,
+        "error": ""
+    })
+
+def create_fail_play_response(message: str) -> flask.Response:
+    return flask.jsonify({
+        "computerMovePosition": -1,
+        "boardState": "",
+        "error": message,
+    })
 
 def print_hint(text: str) -> None:
     print(color(text, COLOR_GRAY))
