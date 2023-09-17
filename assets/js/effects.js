@@ -42,14 +42,19 @@ window.addEventListener("click", event => {
   const PARTICLE_AMOUNT_MAX = 5
   const LIFETIME_MIN = 200
   const LIFETIME_MAX = 1000
+  const SIZE_MIN = 5
+  const SIZE_MAX = 10
   const particleAmount = randomIntInclusive(PARTICLE_AMOUNT_MIN, PARTICLE_AMOUNT_MAX)
 
   for (let i = 0; i < particleAmount; i++) {
     const particle = document.createElement("div")
+    const size = randomIntInclusive(SIZE_MIN, SIZE_MAX)
 
     particle.className = "particle"
     particle.style.left = `${event.clientX}px`
     particle.style.top = `${event.clientY}px`
+    particle.style.width = `${size}px`
+    particle.style.height = `${size}px`
     document.body.appendChild(particle)
 
     const lifetime = randomIntInclusive(LIFETIME_MIN, LIFETIME_MAX)
@@ -69,14 +74,10 @@ window.addEventListener("click", event => {
 })
 
 window.addEventListener("load", () => {
-  // Initialize particles.js.
-  particlesJS.load("particles", "./assets/particle-config.json", () =>
-    console.log("loaded particle config")
-  )
+  const PARTICLE_CONFIG_PATH = "./assets/particle-config.json"
 
-  // Initialize Three.js.
-  // const scene = document.getElementById("scene")
-  // const parallaxInstance = new Parallax(scene)
+  // Initialize particles.js.
+  particlesJS.load("particles", PARTICLE_CONFIG_PATH, () => console.log("Loaded particle config"))
 
   // Begin update loop.
   requestAnimationFrame(update)

@@ -62,8 +62,8 @@ def gameGateway():
     computer_move_position, board_state = tic_tac_toe.next(adjusted_player_position, board)
     last_move_position = computer_move_position if computer_move_position is not None else adjusted_player_position
 
-    aux.log_session(session_id, "Player played at position " + str(adjusted_player_position) + ".")
-    aux.log_session(session_id, "Computer played at position " + str(computer_move_position) + ".")
+    aux.log_session(session_id, "Player played at position " + str(adjusted_player_position))
+    aux.log_session(session_id, "Computer played at position " + str(computer_move_position))
     aux.log_session(session_id, "Board state: " + board_state)
     aux.print_board(board, last_move_position)
 

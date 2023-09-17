@@ -112,10 +112,6 @@ body {
   backdrop-filter: blur(10px);
 }
 
-audio {
-  display: none;
-}
-
 #state-message {
   position: absolute;
   top: 50%;
