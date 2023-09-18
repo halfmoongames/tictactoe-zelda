@@ -93,7 +93,7 @@ Above is the information gathered to better understand the various aspect of the
 
 In the beginning, Zee first developed the basics of the TicTacToe game in which it includes basic functionality of the TicTacToe game. Yurixander reviewed Zee's code for the basic TicTacToe game as well as implement the minimax algorithm into the Zee's basic TicTacToe game in which it performs as it should. Now continuing onto the Alpha-Beta Pruning aspect of the project, several pathways open up. As research from Kenneth shows that there is a Fail-Soft and Fail-Hard approach. We all agreed on going with the Fail Soft approach, despite being a computationally intensive approach, the implementation is just a 3x3 grid and possibilities don't branch out as much than other turn-base games such as Chess in which Fail-Soft might not be viable. Yurixander set his work on creating the Alpha Beta Pruning with Fail Soft approach as well as a benchmarking system that measures the recursion calls in each algorithm.
 
-!["Benchmark Of Minimax and Alpha Beta"](https://raw.githubusercontent.com/KennNguyen/CAP4630-Project1-TicTacToe/blob/web-extra-credit/screenshots/benchmark.png)
+!["Benchmark Of Minimax and Alpha Beta"](https://raw.githubusercontent.com/KennNguyen/CAP4630-Project1-TicTacToe/web-extra-credit/screenshots/benchmark.png)
 
 !["Improved TicTacToe game"](https://raw.githubusercontent.com/KennNguyen/CAP4630-Project1-TicTacToe/web-extra-credit/screenshots/tic2.png)
 
