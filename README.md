@@ -1,6 +1,6 @@
 <div align="center">
-  <h1>Tic-Tac-Toe Zelda</h1>
   <img width="500" alt="A preview of the game in action featuring a Zelda-themed background" src="./github/preview.png" />
+  <h1>Tic-Tac-Toe Zelda</h1>
   <p>A Tic-Tac-Toe game implementation in JavaScript using the Minimax algorithm for computer moves,<br />along with Alpha-Beta Pruning optimization.</p>
 </div>
 
