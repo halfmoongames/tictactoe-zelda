@@ -1,41 +1,3 @@
-import os
-import tic_tac_toe
-import aux
-import logging
-import flask
-
-app = flask.Flask(__name__, static_folder="assets")
-
-@app.route("/")
-def index():
-    return flask.render_template("index.html")
-
-@app.route("/session/create", methods=["POST"])
-def createSession():
-    id = aux.next_session_id()
-
-    assert id not in aux.sessions, "New session id should always be unique"
-    aux.create_session(id)
-    aux.log_session(id, "Created session")
-
-    return aux.create_session_response(id)
-
-@app.route("/play", methods=["POST"])
-def gameGateway():
-    POSITION_PROP_KEY = "position"
-    SESSION_ID_PROP_KEY = "sessionId"
-
-    if not flask.request.is_json:
-        return aux.create_fail_play_response("Invalid request body format (expected JSON)")
-
-    data = flask.request.get_json()
-    required_properties = [SESSION_ID_PROP_KEY, POSITION_PROP_KEY]
-
-    for required_property_key in required_properties:
-        if required_property_key not in data:
-            aux.log("Request was missing required '" + required_property_key + "' property")
-
-            return aux.create_fail_play_response("Invalid request body format (expected JSON with property '" + required_property_key + "')")
 
     player_position: int = data[POSITION_PROP_KEY]
 
@@ -76,14 +38,3 @@ def gameGateway():
     assert computer_move_position is not None, "Computer move position should be defined when the game is still in progress"
 
     return aux.create_play_response(computer_move_position, board_state)
-
-# Application entry point.
-if __name__ == "__main__":
-    is_debug_mode = "DEBUG_MODE" in os.environ
-    logger = logging.getLogger("werkzeug")
-
-    # Only log errors in the console.
-    logger.setLevel(logging.ERROR)
-
-    aux.log("Backend ready; awaiting requests")
-    app.run(debug=is_debug_mode)
